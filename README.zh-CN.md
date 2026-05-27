@@ -1,157 +1,192 @@
 <div align="center">
-  <a href="https://github.com/anncwb/vue-vben-admin">
-    <img alt="VbenAdmin Logo" width="215" src="https://unpkg.com/@vbenjs/static-source@0.1.7/source/logo-v1.webp">
-  </a>
-  <br>
-  <br>
 
-[![license](https://img.shields.io/github/license/anncwb/vue-vben-admin.svg)](LICENSE)
+# 知识库管理后台（T5）
 
-  <h1>Vue Vben Admin</h1>
+基于 [Vue Vben Admin 5.x](https://github.com/vbenjs/vue-vben-admin) 的 Web 管理端，实现加油站场景下的商品、问答、营销活动三类知识库管理。
+
+**仓库地址：** https://github.com/durancexuan/kb-admin-vben
+
 </div>
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=vbenjs_vue-vben-admin&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vbenjs_vue-vben-admin) ![codeql](https://github.com/vbenjs/vue-vben-admin/actions/workflows/codeql.yml/badge.svg) ![build](https://github.com/vbenjs/vue-vben-admin/actions/workflows/build.yml/badge.svg) ![ci](https://github.com/vbenjs/vue-vben-admin/actions/workflows/ci.yml/badge.svg) ![deploy](https://github.com/vbenjs/vue-vben-admin/actions/workflows/deploy.yml/badge.svg)
+**中文** | [English](./README.md)
 
-**中文** | [English](./README.md) | [日本語](./README.ja-JP.md)
+---
 
-## 简介
+## 项目简介
 
-Vue Vben Admin 是 Vue Vben Admin 的升级版本。作为一个免费开源的中后台模板，它采用了最新的 Vue 3、Vite、TypeScript 等主流技术开发，开箱即用，可用于中后台前端开发，也适合学习参考。
+本项目在 Vben Admin Monorepo 的 `playground` 应用中实现「知识库管理后台」完整前端能力，开发阶段通过 **Nitro Mock** 提供接口，无需真实后端即可联调全流程。
 
-## 升级提示
+## 技术栈
 
-该版本为最新版本 `5.0`，与其他版本不兼容，如果你是新项目，建议使用最新版本。如果你想查看旧版本，请使用 [v2 分支](https://github.com/vbenjs/vue-vben-admin/tree/v2)
+| 类别      | 技术                           |
+| --------- | ------------------------------ |
+| 框架      | Vue 3 + TypeScript             |
+| 构建      | Vite 8                         |
+| UI        | Ant Design Vue（`antdv-next`） |
+| 后台模板  | Vue Vben Admin 5.7             |
+| 表格      | Vxe Table（Vben 封装）         |
+| 接口 Mock | Nitro（`apps/backend-mock`）   |
+| 包管理    | pnpm workspace                 |
 
-## 特性
+## 功能说明
 
-- **最新技术栈**：使用 Vue3/vite 等前端前沿技术开发
-- **TypeScript**：应用程序级 JavaScript 的语言
-- **主题**：提供多套主题色彩，可配置自定义主题
-- **国际化**：内置完善的国际化方案
-- **权限**：内置完善的动态路由权限生成方案
+### 侧边栏菜单
 
-## 预览
+| 菜单       | 路由                  | 说明                   |
+| ---------- | --------------------- | ---------------------- |
+| 商品全维库 | `/knowledge/goods`    | 商品 SKU、价格、货架等 |
+| 站级问答库 | `/knowledge/qa`       | 常见问题与答案         |
+| 营销活动库 | `/knowledge/campaign` | 促销活动配置           |
 
-- [Vben Admin](https://vben.pro/) - 完整版中文站点
+### 商品全维库
 
-测试账号：vben/123456
+- 列表：SKU、商品名称、价格、货架位置、状态；分页；关键字搜索
+- 新增 / 编辑：SKU 自动生成（只读）、名称、价格、货架位置、规格、导航点位
+- 校验：名称、价格（>0）、货架位置必填
+- 状态：草稿 / 已上线 / 已下线；支持上线、下线（缺字段时上线按钮禁用并悬停提示）
 
-<div align="center">
-  <img alt="VbenAdmin Logo" width="100%" src="https://anncwb.github.io/anncwb/images/preview1.png">
-  <img alt="VbenAdmin Logo" width="100%" src="https://anncwb.github.io/anncwb/images/preview2.png">
-  <img alt="VbenAdmin Logo" width="100%" src="https://anncwb.github.io/anncwb/images/preview3.png">
-</div>
+### 站级问答库
 
-### 使用 Gitpod
+- 列表：问题、答案、分类、更新时间、状态；分类筛选；关键字搜索
+- 新增 / 编辑 / 删除（删除二次确认）
+- 分类：加油机、卫生间、便利店、营业时间、其他
+- 校验：问题 ≤200 字、答案 ≤1000 字、分类必选
 
-在 Gitpod（适用于 GitHub 的免费在线开发环境）中打开项目，并立即开始编码。
+### 营销活动库
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/vbenjs/vue-vben-admin)
+- 列表：活动名、适用商品、优惠内容、有效期、状态；关键字搜索
+- 新增 / 编辑 / 删除；适用商品多选（来自商品库）
+- 有效期：日期范围选择；结束时间须晚于开始时间
+- 校验：活动名、优惠内容、适用商品、有效期；**已过期活动不可上线**
+- 状态：草稿 / 已上线 / 已下线（与商品、问答统一）
 
-## 文档
+### 状态与上线校验
 
-[文档地址](https://doc.vben.pro/)
+三个子库统一状态机：
 
-## 安装使用
+| 状态   | 标签颜色 | 说明                 |
+| ------ | -------- | -------------------- |
+| 草稿   | 灰色     | 新建默认状态         |
+| 已上线 | 绿色     | 通过上线校验后可发布 |
+| 已下线 | 橙色     | 主动下线             |
 
-1. 获取项目代码
+上线时若字段不完整，前端禁用「上线」按钮并提示缺失项；仍会弹出「上线校验未通过」对话框列出字段名，后端 Mock 同步校验。
+
+## 环境要求
+
+- **Node.js**：`^22.18.0` 或 `^24.0.0`（见根目录 `package.json`）
+- **pnpm**：`>= 11.0.0`（推荐启用 corepack）
+
+## 快速开始
 
 ```bash
-git clone https://github.com/vbenjs/vue-vben-admin.git
-```
+# 1. 克隆仓库
+git clone https://github.com/durancexuan/kb-admin-vben.git
+cd kb-admin-vben
 
-2. 安装依赖
+# 2. 启用 corepack（若尚未启用）
+corepack enable
 
-```bash
-cd vue-vben-admin
-npm i -g corepack
+# 3. 安装依赖
 pnpm install
-```
 
-3. 运行
+# 4. 构建 workspace 内部包（首次克隆建议执行）
+pnpm -r run --if-present stub
 
-```bash
+# 5. 启动开发环境（会提示选择应用，请选 @vben/playground）
 pnpm dev
 ```
 
-4. 打包
+浏览器访问：**http://localhost:5555**
+
+- 登录账号：`vben`
+- 登录密码：`123456`
+- 登录页需完成滑块验证后再提交
+
+## 常用命令
+
+| 命令 | 说明 |
+| --- | --- |
+| `pnpm dev` | 启动开发（交互选择应用，选 **@vben/playground**） |
+| `pnpm dev:play` | 直接启动 playground（推荐） |
+| `pnpm -F @vben/playground run dev` | 同上，显式指定包名 |
+| `pnpm build:play` | 构建 playground 生产包 |
+| `pnpm -F @vben/playground run typecheck` | TypeScript 类型检查 |
+
+仅启动 Mock 服务（一般无需单独启动，playground 会通过 Vite 插件自动拉起）：
 
 ```bash
-pnpm build
+pnpm -F @vben/backend-mock run start
 ```
 
-## 更新日志
+Mock 默认地址：`http://127.0.0.1:5320/api`（由 `playground/vite.config.ts` 代理 `/api`）
 
-[CHANGELOG](https://github.com/vbenjs/vue-vben-admin/releases)
+## 项目结构（与本业务相关）
 
-## 如何贡献
+```text
+playground/
+  src/
+    router/routes/modules/knowledge-base.ts   # 三个一级菜单路由
+    views/knowledge-base/
+      goods/          # 商品全维库
+      qa/             # 站级问答库
+      campaign/       # 营销活动库
+      shared/         # 上线校验、操作列等公共逻辑
+    api/knowledge/    # 前端 API 封装
 
-非常欢迎你的加入！[提一个 Issue](https://github.com/anncwb/vue-vben-admin/issues/new/choose) 或者提交一个 Pull Request。
+apps/backend-mock/
+  api/knowledge/      # Mock 接口
+  utils/              # 内存数据 store、上线校验
+```
 
-**Pull Request 流程：**
+## Mock 接口一览
 
-1. Fork 代码
-2. 创建自己的分支：`git checkout -b feature/xxxx`
-3. 提交你的修改：`git commit -am 'feat(function): add xxxxx'`
-4. 推送您的分支：`git push origin feature/xxxx`
-5. 提交 `pull request`
+前缀均为 `/api`（经 Vite 代理到 Mock 服务）。
 
-## Git 贡献提交规范
+| 模块 | 方法   | 路径                                | 说明           |
+| ---- | ------ | ----------------------------------- | -------------- |
+| 商品 | GET    | `/knowledge/goods/list`             | 分页列表       |
+| 商品 | GET    | `/knowledge/goods/next-sku`         | 获取下一个 SKU |
+| 商品 | POST   | `/knowledge/goods`                  | 新增           |
+| 商品 | PUT    | `/knowledge/goods/:id`              | 编辑           |
+| 商品 | POST   | `/knowledge/goods/:id/publish`      | 上线           |
+| 商品 | POST   | `/knowledge/goods/:id/offline`      | 下线           |
+| 问答 | GET    | `/knowledge/qa/list`                | 分页列表       |
+| 问答 | POST   | `/knowledge/qa`                     | 新增           |
+| 问答 | PUT    | `/knowledge/qa/:id`                 | 编辑           |
+| 问答 | DELETE | `/knowledge/qa/:id`                 | 删除           |
+| 问答 | POST   | `/knowledge/qa/:id/publish`         | 上线           |
+| 问答 | POST   | `/knowledge/qa/:id/offline`         | 下线           |
+| 活动 | GET    | `/knowledge/campaign/list`          | 分页列表       |
+| 活动 | GET    | `/knowledge/campaign/goods-options` | 适用商品选项   |
+| 活动 | POST   | `/knowledge/campaign`               | 新增           |
+| 活动 | PUT    | `/knowledge/campaign/:id`           | 编辑           |
+| 活动 | DELETE | `/knowledge/campaign/:id`           | 删除           |
+| 活动 | POST   | `/knowledge/campaign/:id/publish`   | 上线           |
+| 活动 | POST   | `/knowledge/campaign/:id/offline`   | 下线           |
 
-参考 [vue](https://github.com/vuejs/vue/blob/dev/.github/COMMIT_CONVENTION.md) 规范 ([Angular](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/conventional-changelog-angular))
+## 常见问题
 
-- `feat` 增加新功能
-- `fix` 修复问题/BUG
-- `style` 代码风格相关无影响运行结果的
-- `perf` 优化/性能提升
-- `refactor` 重构
-- `revert` 撤销修改
-- `test` 测试相关
-- `docs` 文档/注释
-- `chore` 依赖更新/脚手架配置修改等
-- `ci` 持续集成
-- `types` 类型定义文件更改
+**Q：登录失败或接口 404？**
 
-## 浏览器支持
+确认终端出现 `Nitro Mock Server` 启动日志。若未启动，先执行 `pnpm -r run --if-present stub`，再重新 `pnpm dev:play`。
 
-本地开发推荐使用 `Chrome 80+` 浏览器
+**Q：`pnpm dev` 后选哪个应用？**
 
-支持现代浏览器，不支持 IE
+选择 **`@vben/playground`**。业务代码均在该应用中。
 
-| [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/edge/edge_48x48.png" alt="Edge" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Edge | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/firefox/firefox_48x48.png" alt="Firefox" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Firefox | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/chrome/chrome_48x48.png" alt="Chrome" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Chrome | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/safari/safari_48x48.png" alt="Safari" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Safari |
-| :-: | :-: | :-: | :-: |
-| last 2 versions | last 2 versions | last 2 versions | last 2 versions |
+**Q：Windows 下 stub 失败？**
 
-## 维护者
+若路径含空格导致构建失败，项目已对 `internal/node-utils/scripts/build.mjs` 做兼容处理；请拉取最新代码后重试 `pnpm -r run --if-present stub`。
 
-[@Vben](https://github.com/anncwb)
+**Q：如何对接真实后端？**
 
-## Star 历史
+将 `playground/.env.development` 中 `VITE_GLOB_API_URL` 改为真实接口地址，并设置 `VITE_NITRO_MOCK=false`，再按后端接口契约调整 `playground/src/api/knowledge/` 与响应结构。
 
-[![Star History Chart](https://api.star-history.com/svg?repos=vbenjs/vue-vben-admin&type=Date)](https://star-history.com/#vbenjs/vue-vben-admin&Date)
+## 关于 Vben Admin 模板
 
-## 捐赠
+本仓库基于 [vue-vben-admin](https://github.com/vbenjs/vue-vben-admin) 二次开发。模板通用说明、贡献规范与浏览器支持见原版文档；详细框架文档：[https://doc.vben.pro](https://doc.vben.pro)
 
-如果你觉得这个项目对你有帮助，你可以帮作者买一杯咖啡表示支持！
+## License
 
-![donate](https://unpkg.com/@vbenjs/static-source@0.1.7/source/sponsor.png)
-
-<a style="display: block;width: 100px;height: 50px;line-height: 50px; color: #fff;text-align: center; background: #408aed;border-radius: 4px;" href="https://www.paypal.com/paypalme/cvvben">Paypal Me</a>
-
-## 贡献者
-
-<a href="https://openomy.app/github/vbenjs/vue-vben-admin" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.app/svg?repo=vbenjs/vue-vben-admin&chart=bubble&latestMonth=3" target="_blank" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
- </a>
-
-<a href="https://github.com/vbenjs/vue-vben-admin/graphs/contributors">
-  <img alt="Contributors" src="https://contrib.rocks/image?repo=vbenjs/vue-vben-admin" />
-</a>
-
-## Discord
-
-- [Github Discussions](https://github.com/anncwb/vue-vben-admin/discussions)
-
-## 许可证
-
-[MIT © Vben-2020](./LICENSE)
+[MIT](./LICENSE)

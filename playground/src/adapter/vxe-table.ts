@@ -183,7 +183,7 @@ setupVbenVxeTable({
           .filter((opt) => opt.show !== false);
 
         function renderBtn(opt: Recordable<any>, listen = true) {
-          return h(
+          const buttonVNode = h(
             Button,
             {
               ...props,
@@ -210,6 +210,17 @@ setupVbenVxeTable({
               },
             },
           );
+          if (opt.disabled && opt.title) {
+            return h(
+              'span',
+              {
+                class: 'inline-block',
+                title: opt.title,
+              },
+              [buttonVNode],
+            );
+          }
+          return buttonVNode;
         }
 
         function renderConfirm(opt: Recordable<any>) {

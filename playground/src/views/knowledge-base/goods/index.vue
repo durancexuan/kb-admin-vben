@@ -1,121 +1,105 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import type {
+  OnActionClickParams,
+  VxeTableGridOptions,
+} from '#/adapter/vxe-table';
+import type { KnowledgeGoodsApi } from '#/api';
 
-import { Page } from '@vben/common-ui';
+import { Page, useVbenDrawer } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { Button, Card, Input, Table, Tag } from 'antdv-next';
+import { Button } from 'antdv-next';
 
-// Mock data for display skeleton
-const loading = ref(false);
-const dataSource = ref([
-  {
-    id: '1',
-    sku: 'SKU-0001',
-    name: '92# 汽油',
-    price: 7.89,
-    shelfLocation: 'A-01',
-    status: 'draft',
-  },
-  {
-    id: '2',
-    sku: 'SKU-0002',
-    name: '95# 汽油',
-    price: 8.56,
-    shelfLocation: 'A-02',
-    status: 'online',
-  },
-  {
-    id: '3',
-    sku: 'SKU-0003',
-    name: '矿泉水 550ml',
-    price: 2,
-    shelfLocation: 'B-03',
-    status: 'offline',
-  },
-]);
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { getGoodsList, offlineGoods, publishGoods } from '#/api';
 
-const columns = [
-  { title: 'SKU', dataIndex: 'sku', key: 'sku', width: 120 },
-  { title: '商品名称', dataIndex: 'name', key: 'name' },
-  { title: '价格', dataIndex: 'price', key: 'price', width: 100 },
-  {
-    title: '货架位置',
-    dataIndex: 'shelfLocation',
-    key: 'shelfLocation',
-    width: 120,
+import { createStatusActionHandlers } from '../shared/use-status-actions';
+import { getGoodsPublishIssues, useColumns, useGridFormSchema } from './data';
+import Form from './modules/form.vue';
+
+const [FormDrawer, formDrawerApi] = useVbenDrawer({
+  connectedComponent: Form,
+  destroyOnClose: true,
+});
+
+const [Grid, gridApi] = useVbenVxeGrid({
+  formOptions: {
+    schema: useGridFormSchema(),
+    submitOnChange: true,
   },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-  { title: '操作', key: 'action', width: 200 },
-];
+  gridOptions: {
+    columns: useColumns(onActionClick),
+    height: 'auto',
+    keepSource: true,
+    proxyConfig: {
+      ajax: {
+        query: async ({ page }, formValues) => {
+          return await getGoodsList({
+            page: page.currentPage,
+            pageSize: page.pageSize,
+            ...formValues,
+          });
+        },
+      },
+    },
+    rowConfig: {
+      keyField: 'id',
+    },
+    toolbarConfig: {
+      custom: true,
+      export: false,
+      refresh: true,
+      search: true,
+      zoom: true,
+    },
+  } as VxeTableGridOptions<KnowledgeGoodsApi.Goods>,
+});
 
-const searchKeyword = ref('');
+const { onOffline, onPublish } =
+  createStatusActionHandlers<KnowledgeGoodsApi.Goods>({
+    entityLabel: '商品',
+    getIssues: getGoodsPublishIssues,
+    offlineApi: offlineGoods,
+    onRefresh: () => gridApi.query(),
+    publishApi: publishGoods,
+  });
 
-function statusColor(status: string) {
-  switch (status) {
+function onActionClick(e: OnActionClickParams<KnowledgeGoodsApi.Goods>) {
+  switch (e.code) {
+    case 'edit': {
+      onEdit(e.row);
+      break;
+    }
     case 'offline': {
-      return 'orange';
+      onOffline(e.row);
+      break;
     }
-    case 'online': {
-      return 'green';
-    }
-    default: {
-      return 'default';
+    case 'publish': {
+      onPublish(e.row);
+      break;
     }
   }
 }
 
-function statusLabel(status: string) {
-  switch (status) {
-    case 'offline': {
-      return '已下线';
-    }
-    case 'online': {
-      return '已上线';
-    }
-    default: {
-      return '草稿';
-    }
-  }
+function onEdit(row: KnowledgeGoodsApi.Goods) {
+  formDrawerApi.setData(row).open();
+}
+
+function onCreate() {
+  formDrawerApi.setData({}).open();
 }
 </script>
 
 <template>
-  <Page title="商品全维库" auto-content-height>
-    <Card>
-      <div class="mb-4 flex items-center justify-between">
-        <Input
-          v-model:value="searchKeyword"
-          placeholder="输入关键字搜索"
-          allow-clear
-          class="w-64"
-        />
-        <Button type="primary">
-          <Plus class="size-4" />
+  <Page auto-content-height>
+    <FormDrawer @success="gridApi.query()" />
+    <Grid table-title="商品全维库">
+      <template #toolbar-tools>
+        <Button type="primary" @click="onCreate">
+          <Plus class="size-5" />
           新增商品
         </Button>
-      </div>
-
-      <Table
-        :columns="columns"
-        :data-source="dataSource"
-        :loading="loading"
-        row-key="id"
-        :pagination="{ pageSize: 10 }"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'status'">
-            <Tag :color="statusColor(record.status)">
-              {{ statusLabel(record.status) }}
-            </Tag>
-          </template>
-          <template v-if="column.key === 'action'">
-            <Button type="link" size="small">编辑</Button>
-            <Button type="link" size="small">上线</Button>
-            <Button type="link" size="small" danger>删除</Button>
-          </template>
-        </template>
-      </Table>
-    </Card>
+      </template>
+    </Grid>
   </Page>
 </template>

@@ -1,157 +1,157 @@
 <div align="center">
-  <a href="https://github.com/anncwb/vue-vben-admin">
-    <img alt="VbenAdmin Logo" width="215" src="https://unpkg.com/@vbenjs/static-source@0.1.7/source/logo-v1.webp">
-  </a>
-  <br>
-  <br>
 
-[![license](https://img.shields.io/github/license/anncwb/vue-vben-admin.svg)](LICENSE)
+# Knowledge Base Admin (T5)
 
-  <h1>Vue Vben Admin</h1>
+A gas-station knowledge base admin built on [Vue Vben Admin 5.x](https://github.com/vbenjs/vue-vben-admin), covering products, Q&A, and marketing campaigns.
+
+**Repository:** https://github.com/durancexuan/kb-admin-vben
+
 </div>
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=vbenjs_vue-vben-admin&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=vbenjs_vue-vben-admin) [![codeql](https://github.com/vbenjs/vue-vben-admin/actions/workflows/codeql.yml/badge.svg)](https://github.com/vbenjs/vue-vben-admin/actions/workflows/codeql.yml) [![build](https://github.com/vbenjs/vue-vben-admin/actions/workflows/build.yml/badge.svg)](https://github.com/vbenjs/vue-vben-admin/actions/workflows/build.yml) [![ci](https://github.com/vbenjs/vue-vben-admin/actions/workflows/ci.yml/badge.svg)](https://github.com/vbenjs/vue-vben-admin/actions/workflows/ci.yml) [![deploy](https://github.com/vbenjs/vue-vben-admin/actions/workflows/deploy.yml/badge.svg)](https://github.com/vbenjs/vue-vben-admin/actions/workflows/deploy.yml)
+**English** | [中文](./README.zh-CN.md)
 
-**English** | [中文](./README.zh-CN.md) | [日本語](./README.ja-JP.md)
+---
 
-## Introduction
+## Overview
 
-Vue Vben Admin is a free and open source middle and back-end template. Using the latest `vue3`, `vite`, `TypeScript` and other mainstream technology development, the out-of-the-box middle and back-end front-end solutions can also be used for learning reference.
+This project implements the T5 knowledge base admin in the **`playground`** app of the Vben monorepo. During development, **Nitro Mock** (`apps/backend-mock`) provides APIs so you can run the full flow without a real backend.
 
-## Upgrade Notice
+## Tech Stack
 
-This is the latest version, 5.0, and it is not compatible with previous versions. If you are starting a new project, it is recommended to use the latest version. If you wish to view the old version, please use the [v2 branch](https://github.com/vbenjs/vue-vben-admin/tree/v2).
+| Area            | Stack                         |
+| --------------- | ----------------------------- |
+| Framework       | Vue 3 + TypeScript            |
+| Build           | Vite 8                        |
+| UI              | Ant Design Vue (`antdv-next`) |
+| Admin shell     | Vue Vben Admin 5.7            |
+| Tables          | Vxe Table (Vben wrapper)      |
+| Mock API        | Nitro (`apps/backend-mock`)   |
+| Package manager | pnpm workspace                |
 
 ## Features
 
-- **Latest Technology Stack**: Developed with cutting-edge front-end technologies like Vue 3 and Vite
-- **TypeScript**: A language for application-scale JavaScript
-- **Themes**: Multiple theme colors available with customizable options
-- **Internationalization**: Comprehensive built-in internationalization support
-- **Permissions**: Built-in solution for dynamic route-based permission generation
+### Sidebar menus
 
-## Preview
+| Menu | Route | Description |
+| --- | --- | --- |
+| Product library | `/knowledge/goods` | SKU, price, shelf location, etc. |
+| Station Q&A | `/knowledge/qa` | FAQ entries by category |
+| Marketing campaigns | `/knowledge/campaign` | Promotions and validity |
 
-- [Vben Admin](https://vben.pro/) - Full version Chinese site
+### Product library
 
-Test Account: vben/123456
+- List with pagination and keyword search (SKU / name)
+- Create / edit drawer: auto SKU (read-only), name, price, shelf location, spec, navigation point
+- Validation: name, price (> 0), shelf location required
+- Status: draft / online / offline with publish & offline actions
 
-<div align="center">
-  <img alt="VbenAdmin Logo" width="100%" src="https://anncwb.github.io/anncwb/images/preview1.png">
-  <img alt="VbenAdmin Logo" width="100%" src="https://anncwb.github.io/anncwb/images/preview2.png">
-  <img alt="VbenAdmin Logo" width="100%" src="https://anncwb.github.io/anncwb/images/preview3.png">
-</div>
+### Station Q&A
 
-### Use Gitpod
+- List with category filter, keyword search, pagination
+- Create / edit / delete (delete with confirmation)
+- Categories: fuel pump, restroom, convenience store, business hours, other
+- Validation: question (≤200 chars), answer (≤1000 chars), category required
 
-Open the project in Gitpod (free online dev environment for GitHub) and start coding immediately.
+### Marketing campaigns
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/vbenjs/vue-vben-admin)
+- List with keyword search and pagination
+- Create / edit / delete; multi-select applicable products from product library
+- Date range picker; end date must be after start date
+- Validation: name, discount, products, validity; **expired campaigns cannot go online**
+- Same draft / online / offline status model as other modules
 
-## Documentation
+### Publish rules
 
-[Document](https://doc.vben.pro/)
+All three modules share one status machine (draft → online → offline). The **Publish** button is disabled when required fields are missing; hover shows missing field names. A warning modal lists issues if publish is blocked. Mock APIs validate on the server as well.
 
-## Install and Use
+## Requirements
 
-1. Get the project code
+- **Node.js:** `^22.18.0` or `^24.0.0`
+- **pnpm:** `>= 11.0.0` (corepack recommended)
+
+## Quick Start
 
 ```bash
-git clone https://github.com/vbenjs/vue-vben-admin.git
-```
+git clone https://github.com/durancexuan/kb-admin-vben.git
+cd kb-admin-vben
 
-2. Install dependencies
-
-```bash
-cd vue-vben-admin
-npm i -g corepack
+corepack enable
 pnpm install
-```
 
-3. Run
+# First-time setup: build internal workspace packages
+pnpm -r run --if-present stub
 
-```bash
+# Start dev (when prompted, choose @vben/playground)
 pnpm dev
 ```
 
-4. Build
+Or start playground directly:
 
 ```bash
-pnpm build
+pnpm dev:play
 ```
 
-## Change Log
+Open **http://localhost:5555**
 
-[CHANGELOG](https://github.com/vbenjs/vue-vben-admin/releases)
+| Item     | Value                                    |
+| -------- | ---------------------------------------- |
+| Username | `vben`                                   |
+| Password | `123456`                                 |
+| Note     | Complete the slider captcha before login |
 
-## How to Contribute
+## Common Commands
 
-You are very welcome to join! [Raise an issue](https://github.com/anncwb/vue-vben-admin/issues/new/choose) or submit a Pull Request.
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Dev server (interactive app picker → **@vben/playground**) |
+| `pnpm dev:play` | Start playground only (recommended) |
+| `pnpm -F @vben/playground run dev` | Same as above, explicit package |
+| `pnpm build:play` | Production build for playground |
+| `pnpm -F @vben/playground run typecheck` | TypeScript check |
 
-**Pull Request Process:**
+Mock server (usually auto-started by Vite): `http://127.0.0.1:5320/api`, proxied via `/api` in `playground/vite.config.ts`.
 
-1. Fork the code
-2. Create your branch: `git checkout -b feat/xxxx`
-3. Submit your changes: `git commit -am 'feat(function): add xxxxx'`
-4. Push your branch: `git push origin feat/xxxx`
-5. Submit `pull request`
+Optional standalone mock:
 
-## Git Contribution Submission Specification
+```bash
+pnpm -F @vben/backend-mock run start
+```
 
-Reference [vue](https://github.com/vuejs/vue/blob/dev/.github/COMMIT_CONVENTION.md) specification ([Angular](https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/conventional-changelog-angular))
+## Project Layout (business code)
 
-- `feat` Add new features
-- `fix` Fix the problem/BUG
-- `style` The code style is related and does not affect the running result
-- `perf` Optimization/performance improvement
-- `refactor` Refactor
-- `revert` Undo edit
-- `test` Test related
-- `docs` Documentation/notes
-- `chore` Dependency update/scaffolding configuration modification etc.
-- `ci` Continuous integration
-- `types` Type definition file changes
+```text
+playground/src/
+  router/routes/modules/knowledge-base.ts
+  views/knowledge-base/{goods,qa,campaign,shared}/
+  api/knowledge/
 
-## Browser Support
+apps/backend-mock/
+  api/knowledge/
+  utils/knowledge-*-store.ts
+```
 
-The `Chrome 80+` browser is recommended for local development
+## Mock API (prefix `/api`)
 
-Support modern browsers, not IE
+See [README.zh-CN.md](./README.zh-CN.md#mock-接口一览) for the full endpoint table.
 
-| [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/edge/edge_48x48.png" alt="Edge" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Edge | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/firefox/firefox_48x48.png" alt="Firefox" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Firefox | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/chrome/chrome_48x48.png" alt="Chrome" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Chrome | [<img src="https://raw.githubusercontent.com/alrra/browser-logos/master/src/safari/safari_48x48.png" alt="Safari" width="24px" height="24px" />](http://godban.github.io/browsers-support-badges/)</br>Safari |
-| :-: | :-: | :-: | :-: |
-| last 2 versions | last 2 versions | last 2 versions | last 2 versions |
+## FAQ
 
-## Maintainer
+**Login fails or 404 on API**
 
-[@Vben](https://github.com/anncwb)
+Ensure `Nitro Mock Server` appears in the terminal. Run `pnpm -r run --if-present stub`, then `pnpm dev:play` again.
 
-## Star History
+**Which app to select after `pnpm dev`?**
 
-[![Star History Chart](https://api.star-history.com/svg?repos=vbenjs/vue-vben-admin&type=Date)](https://star-history.com/#vbenjs/vue-vben-admin&Date)
+Choose **`@vben/playground`**.
 
-## Donate
+**Connect to a real backend**
 
-If you think this project is helpful to you, you can help the author buy a cup of coffee to show your support!
+Set `VITE_GLOB_API_URL` in `playground/.env.development`, set `VITE_NITRO_MOCK=false`, and align `playground/src/api/knowledge/` with your API contract.
 
-![donate](https://unpkg.com/@vbenjs/static-source@0.1.7/source/sponsor.png)
+## Upstream Template
 
-<a style="display: block;width: 100px;height: 50px;line-height: 50px; color: #fff;text-align: center; background: #408aee;border-radius: 4px;" href="https://www.paypal.com/paypalme/cvvben">Paypal Me</a>
-
-## Contributors
-
-<a href="https://openomy.app/github/vbenjs/vue-vben-admin" target="_blank" style="display: block; width: 100%;" align="center">
-  <img src="https://openomy.app/svg?repo=vbenjs/vue-vben-admin&chart=bubble&latestMonth=3" target="_blank" alt="Contribution Leaderboard" style="display: block; width: 100%;" />
- </a>
-
-<a href="https://github.com/vbenjs/vue-vben-admin/graphs/contributors">
-  <img alt="Contributors" src="https://contrib.rocks/image?repo=vbenjs/vue-vben-admin" />
-</a>
-
-## Discord
-
-- [Github Discussions](https://github.com/anncwb/vue-vben-admin/discussions)
+Based on [vue-vben-admin](https://github.com/vbenjs/vue-vben-admin). Framework docs: [https://doc.vben.pro](https://doc.vben.pro)
 
 ## License
 
-[MIT © Vben-2020](./LICENSE)
+[MIT](./LICENSE)

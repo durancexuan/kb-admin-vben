@@ -1,118 +1,127 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import type {
+  OnActionClickParams,
+  VxeTableGridOptions,
+} from '#/adapter/vxe-table';
+import type { KnowledgeQaApi } from '#/api';
 
-import { Page } from '@vben/common-ui';
+import { Page, useVbenDrawer } from '@vben/common-ui';
 import { Plus } from '@vben/icons';
 
-import { Button, Card, Select, Table, Tag } from 'antdv-next';
+import { Button, message } from 'antdv-next';
 
-const loading = ref(false);
+import { useVbenVxeGrid } from '#/adapter/vxe-table';
+import { deleteQa, getQaList, offlineQa, publishQa } from '#/api';
 
-const categoryOptions = [
-  { label: '全部', value: '' },
-  { label: '加油机', value: '加油机' },
-  { label: '卫生间', value: '卫生间' },
-  { label: '便利店', value: '便利店' },
-  { label: '营业时间', value: '营业时间' },
-  { label: '其他', value: '其他' },
-];
+import { createStatusActionHandlers } from '../shared/use-status-actions';
+import { getQaPublishIssues, useColumns, useGridFormSchema } from './data';
+import Form from './modules/form.vue';
 
-const selectedCategory = ref('');
+const [FormDrawer, formDrawerApi] = useVbenDrawer({
+  connectedComponent: Form,
+  destroyOnClose: true,
+});
 
-const dataSource = ref([
-  {
-    id: '1',
-    question: '你们几点开门？',
-    answer: '本站 24 小时营业。',
-    category: '营业时间',
-    updatedAt: '2026-05-20 10:00',
-    status: 'online',
+const [Grid, gridApi] = useVbenVxeGrid({
+  formOptions: {
+    schema: useGridFormSchema(),
+    submitOnChange: true,
   },
-  {
-    id: '2',
-    question: '卫生间在哪里？',
-    answer: '进入便利店后左转即到。',
-    category: '卫生间',
-    updatedAt: '2026-05-21 14:30',
-    status: 'draft',
-  },
-]);
+  gridOptions: {
+    columns: useColumns(onActionClick),
+    height: 'auto',
+    keepSource: true,
+    proxyConfig: {
+      ajax: {
+        query: async ({ page }, formValues) => {
+          return await getQaList({
+            page: page.currentPage,
+            pageSize: page.pageSize,
+            ...formValues,
+          });
+        },
+      },
+    },
+    rowConfig: {
+      keyField: 'id',
+    },
+    toolbarConfig: {
+      custom: true,
+      export: false,
+      refresh: true,
+      search: true,
+      zoom: true,
+    },
+  } as VxeTableGridOptions<KnowledgeQaApi.Qa>,
+});
 
-const columns = [
-  { title: '问题', dataIndex: 'question', key: 'question' },
-  { title: '答案', dataIndex: 'answer', key: 'answer', ellipsis: true },
-  { title: '分类', dataIndex: 'category', key: 'category', width: 100 },
-  { title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt', width: 160 },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-  { title: '操作', key: 'action', width: 200 },
-];
+const { onOffline, onPublish } = createStatusActionHandlers<KnowledgeQaApi.Qa>({
+  entityLabel: '问答',
+  getIssues: getQaPublishIssues,
+  offlineApi: offlineQa,
+  onRefresh: () => gridApi.query(),
+  publishApi: publishQa,
+});
 
-function statusColor(status: string) {
-  switch (status) {
+function onActionClick(e: OnActionClickParams<KnowledgeQaApi.Qa>) {
+  switch (e.code) {
+    case 'delete': {
+      onDelete(e.row);
+      break;
+    }
+    case 'edit': {
+      onEdit(e.row);
+      break;
+    }
     case 'offline': {
-      return 'orange';
+      onOffline(e.row);
+      break;
     }
-    case 'online': {
-      return 'green';
-    }
-    default: {
-      return 'default';
+    case 'publish': {
+      onPublish(e.row);
+      break;
     }
   }
 }
 
-function statusLabel(status: string) {
-  switch (status) {
-    case 'offline': {
-      return '已下线';
-    }
-    case 'online': {
-      return '已上线';
-    }
-    default: {
-      return '草稿';
-    }
-  }
+function onEdit(row: KnowledgeQaApi.Qa) {
+  formDrawerApi.setData(row).open();
+}
+
+function onCreate() {
+  formDrawerApi.setData({}).open();
+}
+
+function onDelete(row: KnowledgeQaApi.Qa) {
+  const hideLoading = message.loading({
+    content: `正在删除「${row.question}」`,
+    duration: 0,
+    key: 'qa_delete_msg',
+  });
+  deleteQa(row.id)
+    .then(() => {
+      message.success({
+        content: '删除成功',
+        key: 'qa_delete_msg',
+      });
+      gridApi.query();
+    })
+    .catch(() => {
+      hideLoading();
+    });
 }
 </script>
 
 <template>
-  <Page title="站级问答库" auto-content-height>
-    <Card>
-      <div class="mb-4 flex items-center justify-between">
-        <Select
-          v-model:value="selectedCategory"
-          :options="categoryOptions"
-          placeholder="按分类筛选"
-          class="w-48"
-          allow-clear
-        />
-        <Button type="primary">
-          <Plus class="size-4" />
+  <Page auto-content-height>
+    <FormDrawer @success="gridApi.query()" />
+    <Grid table-title="站级问答库">
+      <template #toolbar-tools>
+        <Button type="primary" @click="onCreate">
+          <Plus class="size-5" />
           新增问答
         </Button>
-      </div>
-
-      <Table
-        :columns="columns"
-        :data-source="dataSource"
-        :loading="loading"
-        row-key="id"
-        :pagination="{ pageSize: 10 }"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'status'">
-            <Tag :color="statusColor(record.status)">
-              {{ statusLabel(record.status) }}
-            </Tag>
-          </template>
-          <template v-if="column.key === 'action'">
-            <Button type="link" size="small">编辑</Button>
-            <Button type="link" size="small">上线</Button>
-            <Button type="link" size="small" danger>删除</Button>
-          </template>
-        </template>
-      </Table>
-    </Card>
+      </template>
+    </Grid>
   </Page>
 </template>
