@@ -1,0 +1,28 @@
+{
+  "name": "@vben/kb-api",
+  "version": "5.7.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "migrate": "tsx src/db/migrate.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "catalog:",
+    "dotenv": "catalog:",
+    "fastify": "catalog:",
+    "jsonwebtoken": "catalog:",
+    "pg": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "catalog:",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: kb-postgres
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: kb
+      POSTGRES_PASSWORD: kb_secret
+      POSTGRES_DB: kb
+    volumes:
+      - kb_pg_data:/var/lib/postgresql/data
+
+volumes:
+  kb_pg_data:

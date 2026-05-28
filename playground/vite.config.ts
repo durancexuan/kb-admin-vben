@@ -6,10 +6,15 @@ export default defineConfig(async () => {
     vite: {
       server: {
         proxy: {
+          // 问答库走真实后端 kb-api（需先 pnpm dev:kb-api）
+          '/api/knowledge/qa': {
+            changeOrigin: true,
+            target: 'http://127.0.0.1:8080',
+          },
           '/api': {
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/api/, ''),
-            // mock代理目标地址
+            // mock代理目标地址（登录、商品、活动等）
             target: 'http://127.0.0.1:5320/api',
             ws: true,
           },
