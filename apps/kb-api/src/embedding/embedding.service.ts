@@ -1,7 +1,9 @@
+import type { GoodsRow } from '../goods/types.js';
 import type { QaCategory } from '../qa/types.js';
 
 import { config, hasExternalEmbedding } from '../config.js';
 import { query } from '../db/pool.js';
+import { buildGoodsEmbedText } from '../goods/publish.js';
 import { buildEmbedText } from '../qa/publish.js';
 
 export class EmbeddingService {
@@ -122,4 +124,33 @@ export async function upsertQaEmbedding(qa: {
 
 export async function deleteQaEmbedding(qaId: string) {
   await query('DELETE FROM kb_qa_embedding WHERE qa_id = $1', [qaId]);
+}
+
+export async function upsertGoodsEmbedding(goods: GoodsRow) {
+  const embedText = buildGoodsEmbedText(goods);
+  const vector = await embeddingService.embed(embedText);
+
+  await query(
+    `INSERT INTO kb_goods_embedding (goods_id, station_id, embedding, embed_text, model_id, updated_at)
+     VALUES ($1, $2, $3::vector, $4, $5, now())
+     ON CONFLICT (goods_id) DO UPDATE SET
+       station_id = EXCLUDED.station_id,
+       embedding = EXCLUDED.embedding,
+       embed_text = EXCLUDED.embed_text,
+       model_id = EXCLUDED.model_id,
+       updated_at = now()`,
+    [
+      goods.id,
+      goods.station_id,
+      embeddingService.toPgVector(vector),
+      embedText,
+      hasExternalEmbedding()
+        ? config.EMBEDDING_API_MODEL
+        : config.EMBEDDING_MODEL,
+    ],
+  );
+}
+
+export async function deleteGoodsEmbedding(goodsId: string) {
+  await query('DELETE FROM kb_goods_embedding WHERE goods_id = $1', [goodsId]);
 }
