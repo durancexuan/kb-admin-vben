@@ -1,4 +1,4 @@
-﻿-- goods seed
+-- goods seed (matches Mock INITIAL_GOODS)
 INSERT INTO kb_goods (id, station_id, sku, name, price, shelf_location, spec, navigation_point, status, embed_status)
 VALUES
   ('00000000-0000-4000-8001-000000000001', 'default', 'SKU-0001', '92# 汽油', 7.89, 'A-01', '92号', '加油区-1号机', 'online', 'pending'),
@@ -25,5 +25,5 @@ VALUES
   ('00000000-0000-4000-8001-000000000022', 'default', 'SKU-0022', '脉动 600ml', 4, 'B-09', '600ml', NULL, 'online', 'pending'),
   ('00000000-0000-4000-8001-000000000023', 'default', 'SKU-0023', '农夫山泉 550ml', 2, 'B-10', '550ml', NULL, 'online', 'pending'),
   ('00000000-0000-4000-8001-000000000024', 'default', 'SKU-0024', '冰红茶 500ml', 3.5, 'B-11', '500ml', NULL, 'offline', 'none'),
-  ('00000000-0000-4000-8001-000000000025', 'default', 'SKU-0025', '防冻液 -35C 4L', 45, 'C-05', '4L', NULL, 'draft', 'none')
+  ('00000000-0000-4000-8001-000000000025', 'default', 'SKU-0025', '防冻液 -35℃ 4L', 45, 'C-05', '4L', NULL, 'draft', 'none')
 ON CONFLICT (id) DO NOTHING;

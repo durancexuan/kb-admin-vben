@@ -8,7 +8,11 @@ import { pool } from './pool.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function runSqlFile(filePath: string) {
-  const sql = await readFile(filePath, 'utf8');
+  let sql = await readFile(filePath, 'utf8');
+  // Windows 编辑器/PowerShell 可能写入 UTF-8 BOM，Postgres 无法解析
+  if (sql.startsWith('\uFEFF')) {
+    sql = sql.slice(1);
+  }
   await pool.query(sql);
 }
 
