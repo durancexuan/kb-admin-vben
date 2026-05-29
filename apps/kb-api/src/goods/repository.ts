@@ -25,7 +25,8 @@ export async function listGoods(params: {
     sql += ` AND (sku ILIKE $${idx} OR name ILIKE $${idx})`;
   }
 
-  sql += ' ORDER BY created_at DESC, id ASC';
+  // 新建在前；种子数据 created_at 相同时按 SKU 倒序（SKU-0025 在 SKU-0001 前）
+  sql += ' ORDER BY created_at DESC, sku DESC';
 
   const result = await query<GoodsRow>(sql, values);
   return result.rows;
@@ -188,6 +189,12 @@ export async function searchGoodsByKeyword(params: {
        g.spec,
        g.navigation_point,
        GREATEST(
+         CASE WHEN lower(trim(g.name)) = lower(trim($2)) THEN 1.0 ELSE 0 END,
+         CASE WHEN g.name ILIKE '%' || $2 || '%' THEN 0.92 ELSE 0 END,
+         CASE WHEN g.sku ILIKE '%' || $2 || '%' THEN 1.0 ELSE 0 END,
+         CASE WHEN COALESCE(g.spec, '') ILIKE '%' || $2 || '%' THEN 0.85 ELSE 0 END,
+         CASE WHEN COALESCE(g.navigation_point, '') ILIKE '%' || $2 || '%' THEN 0.75 ELSE 0 END,
+         CASE WHEN g.shelf_location ILIKE '%' || $2 || '%' THEN 0.7 ELSE 0 END,
          similarity(g.name, $2),
          COALESCE(similarity(g.navigation_point, $2), 0),
          COALESCE(similarity(g.spec, $2), 0)

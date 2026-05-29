@@ -1,162 +1,131 @@
 import type { QaCategory } from '../qa/types.js';
+import type { RobotLibrary, RobotQueryResult } from './types.js';
 
 import { buildCampaignSpeakReply } from '../campaign/publish.js';
 import { campaignService } from '../campaign/service.js';
+import { config } from '../config.js';
 import { buildGoodsSpeakReply } from '../goods/publish.js';
 import { findGoodsById } from '../goods/repository.js';
 import { goodsService } from '../goods/service.js';
 import { qaService } from '../qa/service.js';
 import { isValidCategory } from '../qa/types.js';
+import { ROBOT_LIBRARY_LABEL } from './types.js';
 
-type KnowledgeType = 'campaign' | 'faq' | 'goods';
-
-interface UnifiedCandidate {
+interface RankedAnswer {
   confidence: number;
-  type: KnowledgeType;
+  display: string;
+  library: RobotLibrary;
+  speak: string;
+}
+
+function roundConfidence(value: number) {
+  return Number(value.toFixed(4));
+}
+
+function buildMiss(utterance: string): RobotQueryResult {
+  return {
+    utterance,
+    hit: false,
+    library: null,
+    libraryLabel: null,
+    confidence: null,
+    display: null,
+    speak: null,
+  };
+}
+
+function buildHit(utterance: string, best: RankedAnswer): RobotQueryResult {
+  return {
+    utterance,
+    hit: true,
+    library: best.library,
+    libraryLabel: ROBOT_LIBRARY_LABEL[best.library],
+    confidence: roundConfidence(best.confidence),
+    display: best.display,
+    speak: best.speak,
+  };
+}
+
+function buildBelowThreshold(
+  utterance: string,
+  best: RankedAnswer,
+): RobotQueryResult {
+  return {
+    utterance,
+    hit: false,
+    library: null,
+    libraryLabel: null,
+    confidence: roundConfidence(best.confidence),
+    display: null,
+    speak: null,
+  };
 }
 
 export async function unifiedKnowledgeRetrieve(params: {
   category?: QaCategory;
-  topK?: number;
   utterance: string;
 }) {
+  const utterance = params.utterance.trim();
+  if (!utterance) {
+    return buildMiss(utterance);
+  }
+
   const [qaResult, goodsResult, campaignResult] = await Promise.all([
-    qaService.retrieve({
-      category: params.category,
-      topK: params.topK,
-      utterance: params.utterance,
-    }),
-    goodsService.retrieve({
-      topK: params.topK,
-      utterance: params.utterance,
-    }),
-    campaignService.retrieve({
-      topK: params.topK,
-      utterance: params.utterance,
-    }),
+    qaService.retrieve({ category: params.category, topK: 1, utterance }),
+    goodsService.retrieve({ topK: 1, utterance }),
+    campaignService.retrieve({ topK: 1, utterance }),
   ]);
 
-  const winners: UnifiedCandidate[] = [];
+  const ranked: RankedAnswer[] = [];
 
-  if (qaResult.hit && qaResult.items[0]) {
-    winners.push({
-      type: 'faq',
-      confidence: qaResult.items[0].confidence ?? 0,
-    });
-  }
-  if (goodsResult.hit && goodsResult.items[0]) {
-    winners.push({
-      type: 'goods',
-      confidence: goodsResult.items[0].confidence ?? 0,
-    });
-  }
-  if (campaignResult.hit && campaignResult.items[0]) {
-    winners.push({
-      type: 'campaign',
-      confidence: campaignResult.items[0].confidence ?? 0,
+  const qaBest = qaResult.items[0];
+  if (qaBest) {
+    ranked.push({
+      library: 'qa',
+      confidence: qaBest.confidence ?? 0,
+      display: qaBest.question,
+      speak: qaBest.answer,
     });
   }
 
-  winners.sort((a, b) => b.confidence - a.confidence);
-  const bestType = winners[0]?.type ?? null;
-
-  if (bestType === 'goods') {
-    const best = goodsResult.items[0];
-    if (best) {
-      const row = await findGoodsById(best.id);
-      const speak = row
+  const goodsBest = goodsResult.items[0];
+  if (goodsBest) {
+    const row = await findGoodsById(goodsBest.id);
+    ranked.push({
+      library: 'goods',
+      confidence: goodsBest.confidence ?? 0,
+      display: goodsBest.name,
+      speak: row
         ? buildGoodsSpeakReply(row)
-        : `${best.name}，售价 ${best.price} 元。`;
-      const runnerUp = goodsResult.items[1];
-      const needClarify =
-        goodsResult.hit &&
-        runnerUp &&
-        best.confidence - runnerUp.confidence < 0.05;
-
-      return {
-        action: {
-          poi: best.navigationPoint ?? null,
-          type: 'navigate' as const,
-        },
-        candidates: goodsResult.items,
-        hit: goodsResult.hit,
-        needClarify,
-        reply: {
-          display: best.name,
-          speak,
-        },
-        source: {
-          goodsId: best.id,
-          matchType: best.matchType,
-          name: best.name,
-          shelfLocation: best.shelfLocation,
-          sku: best.sku,
-        },
-        type: 'goods' as const,
-      };
-    }
+        : `${goodsBest.name}，售价 ${goodsBest.price} 元。`,
+    });
   }
 
-  if (bestType === 'campaign') {
-    const best = campaignResult.items[0];
-    if (best) {
-      const speak = buildCampaignSpeakReply(best);
-      const runnerUp = campaignResult.items[1];
-      const needClarify =
-        campaignResult.hit &&
-        runnerUp &&
-        best.confidence - runnerUp.confidence < 0.05;
-
-      return {
-        action: null,
-        candidates: campaignResult.items,
-        hit: campaignResult.hit,
-        needClarify,
-        reply: {
-          display: best.name,
-          speak,
-        },
-        source: {
-          campaignId: best.id,
-          discount: best.discount,
-          matchType: best.matchType,
-          name: best.name,
-        },
-        type: 'campaign' as const,
-      };
-    }
+  const campaignBest = campaignResult.items[0];
+  if (campaignBest) {
+    ranked.push({
+      library: 'campaign',
+      confidence: campaignBest.confidence ?? 0,
+      display: campaignBest.name,
+      speak: buildCampaignSpeakReply(campaignBest),
+    });
   }
 
-  const best = qaResult.items[0];
-  const runnerUp = qaResult.items[1];
-  const needClarify =
-    qaResult.hit &&
-    best &&
-    runnerUp &&
-    runnerUp.confidence !== undefined &&
-    best.confidence - runnerUp.confidence < 0.05;
+  if (ranked.length === 0) {
+    return buildMiss(utterance);
+  }
 
-  return {
-    action: best ? { poi: null, type: 'none' as const } : null,
-    candidates: qaResult.items,
-    hit: qaResult.hit,
-    needClarify,
-    reply: best
-      ? {
-          display: best.question,
-          speak: best.answer,
-        }
-      : null,
-    source: best
-      ? {
-          category: best.category,
-          matchType: best.matchType,
-          matchedQuestion: best.question,
-          qaId: best.id,
-        }
-      : null,
-    type: 'faq' as const,
-  };
+  ranked.sort((a, b) => b.confidence - a.confidence);
+  const best = ranked[0];
+  if (!best) {
+    return buildMiss(utterance);
+  }
+
+  if (best.confidence < config.MIN_RETRIEVE_SCORE) {
+    return buildBelowThreshold(utterance, best);
+  }
+
+  return buildHit(utterance, best);
 }
 
 export function parseRobotCategory(category?: string) {

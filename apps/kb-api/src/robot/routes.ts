@@ -13,7 +13,6 @@ const robotQuerySchema = z.object({
     })
     .optional(),
   stationId: z.string().optional(),
-  topK: z.number().int().positive().max(20).optional(),
   utterance: z.string().min(1),
 });
 
@@ -27,7 +26,6 @@ export async function registerRobotRoutes(app: FastifyInstance) {
 
       const result = await unifiedKnowledgeRetrieve({
         category,
-        topK: body.topK,
         utterance: body.utterance,
       });
 

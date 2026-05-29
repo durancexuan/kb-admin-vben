@@ -56,10 +56,71 @@ pnpm dev:play
 
 `playground/vite.config.ts` 已将 `/api/knowledge/*` 代理到 kb-api；登录仍走 Mock。
 
-**确认数据在库：**
+### 确认数据在库
+
+三库数据均在 Postgres 容器 `kb-postgres`、数据库 `kb` 中（**不是** Mock 内存）。管理端新建/编辑后，用下列命令核对是否已写入。
+
+| 子库       | 业务表        | 关联表                                   |
+| ---------- | ------------- | ---------------------------------------- |
+| 商品全维库 | `kb_goods`    | `kb_goods_embedding`（已上线商品的向量） |
+| 站级问答库 | `kb_qa`       | `kb_qa_embedding`                        |
+| 营销活动库 | `kb_campaign` | `kb_campaign_goods`（适用商品）          |
+
+**三库行数一览**（种子数据：商品 25、问答 10、活动 5）：
 
 ```bash
-docker exec -it kb-postgres psql -U kb -d kb -c "SELECT name, status FROM kb_goods LIMIT 5;"
+docker exec -it kb-postgres psql -U kb -d kb -c "
+SELECT 'goods' AS lib, COUNT(*)::int AS cnt FROM kb_goods
+UNION ALL SELECT 'qa', COUNT(*)::int FROM kb_qa
+UNION ALL SELECT 'campaign', COUNT(*)::int FROM kb_campaign;
+"
+```
+
+**商品全维库** — 最近 5 条（与管理端列表一致：`created_at`、SKU 倒序）：
+
+```bash
+docker exec -it kb-postgres psql -U kb -d kb -c "
+SELECT sku, name, shelf_location, status, created_at
+FROM kb_goods
+ORDER BY created_at DESC, sku DESC
+LIMIT 5;
+"
+```
+
+> 查库勿写无 `ORDER BY` 的 `LIMIT`，否则可能只看到旧种子数据。
+
+**站级问答库** — 最近 5 条（含分类、状态）：
+
+```bash
+docker exec -it kb-postgres psql -U kb -d kb -c "
+SELECT question, category, status
+FROM kb_qa
+ORDER BY created_at DESC, id ASC
+LIMIT 5;
+"
+```
+
+**营销活动库** — 最近 5 条（含有效期、适用商品数）：
+
+```bash
+docker exec -it kb-postgres psql -U kb -d kb -c "
+SELECT c.name, c.discount, c.start_date, c.end_date, c.status,
+       COUNT(cg.goods_id)::int AS applicable_goods_count
+FROM kb_campaign c
+LEFT JOIN kb_campaign_goods cg ON cg.campaign_id = c.id
+GROUP BY c.id
+ORDER BY c.created_at DESC, c.id ASC
+LIMIT 5;
+"
+```
+
+**页面侧快速确认**：kb-api 终端应出现对应请求日志（如 `GET /api/knowledge/goods/list`）；在管理端新增一条后 **重启 kb-api**，列表里仍在 → 说明已落库。Mock 内存数据重启后会消失，勿与 kb-api 混淆。
+
+**交互式进库**（可选）：
+
+```bash
+docker exec -it kb-postgres psql -U kb -d kb
+# 进入后例如：\dt kb_*   SELECT * FROM kb_goods LIMIT 3;
 ```
 
 ## 常用命令
@@ -72,7 +133,7 @@ docker exec -it kb-postgres psql -U kb -d kb -c "SELECT name, status FROM kb_goo
 
 ## 机器人 / Agent
 
-`POST http://127.0.0.1:8080/api/robot/knowledge/query` — 并行检索问答、商品、活动，返回 `type`（`faq` / `goods` / `campaign`）与 `reply.speak`。详见 [`apps/kb-api/README.md`](./apps/kb-api/README.md)。
+`POST http://127.0.0.1:8080/api/robot/knowledge/query` — 并行检索三库。看返回 **`data.hit`** 与 **`data.speak`**（播报正文）；**`data.libraryLabel`** 表示来自哪个库。详见 [`apps/kb-api/README.md`](./apps/kb-api/README.md)。
 
 ## 常见问题
 

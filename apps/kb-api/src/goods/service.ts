@@ -7,6 +7,7 @@ import {
   upsertGoodsEmbedding,
 } from '../embedding/embedding.service.js';
 import { formatPublishError, validateGoodsPublish } from './publish.js';
+import { normalizeGoodsUtterance } from './query-normalize.js';
 import {
   countGoodsEmbeddings,
   createGoods,
@@ -99,7 +100,7 @@ export class GoodsService {
 
   async retrieve(params: { topK?: number; utterance: string }) {
     const topK = params.topK ?? 5;
-    const utterance = params.utterance.trim();
+    const utterance = normalizeGoodsUtterance(params.utterance.trim());
     if (!utterance) {
       return { hit: false as const, items: [] };
     }
@@ -160,19 +161,22 @@ export class GoodsService {
       const existing = merged.get(item.id);
       if (existing) {
         existing.vectorScore = item.vectorScore;
-        existing.score = existing.keywordScore * 0.35 + item.vectorScore * 0.65;
+        existing.score = mergeGoodsRetrieveScore(
+          existing.keywordScore,
+          item.vectorScore,
+        );
       } else {
         merged.set(item.id, {
           ...item,
           keywordScore: 0,
-          score: item.vectorScore * 0.65,
+          score: mergeGoodsRetrieveScore(0, item.vectorScore),
         });
       }
     }
 
     for (const item of merged.values()) {
       if (item.vectorScore === 0 && item.keywordScore > 0) {
-        item.score = item.keywordScore * 0.35;
+        item.score = mergeGoodsRetrieveScore(item.keywordScore, 0);
       }
     }
 
@@ -237,6 +241,23 @@ export class GoodsService {
       await setGoodsEmbedStatus(row.id, 'failed', this.stationId);
     }
   }
+}
+
+function mergeGoodsRetrieveScore(keywordScore: number, vectorScore: number) {
+  const strongKeyword = keywordScore >= 0.75;
+
+  if (vectorScore > 0 && keywordScore > 0) {
+    return strongKeyword
+      ? keywordScore * 0.7 + vectorScore * 0.3
+      : keywordScore * 0.35 + vectorScore * 0.65;
+  }
+  if (vectorScore > 0) {
+    return vectorScore * 0.65;
+  }
+  if (keywordScore > 0) {
+    return strongKeyword ? keywordScore : keywordScore * 0.35;
+  }
+  return 0;
 }
 
 function resolveMatchType(vectorScore: number, keywordScore: number) {
