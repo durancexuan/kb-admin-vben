@@ -1,0 +1,26 @@
+-- 商品语义标签种子（口语 / 类目 / 近义词）
+UPDATE kb_goods SET semantic_tags = ARRAY['汽油','加油','92号','燃油','油品'] WHERE sku = 'SKU-0001';
+UPDATE kb_goods SET semantic_tags = ARRAY['汽油','加油','95号','燃油','油品'] WHERE sku = 'SKU-0002';
+UPDATE kb_goods SET semantic_tags = ARRAY['汽油','加油','98号','燃油','油品'] WHERE sku = 'SKU-0003';
+UPDATE kb_goods SET semantic_tags = ARRAY['柴油','加油','0号','燃油','油品'] WHERE sku = 'SKU-0004';
+UPDATE kb_goods SET semantic_tags = ARRAY['矿泉水','饮料','喝的','水','饮品'] WHERE sku = 'SKU-0005';
+UPDATE kb_goods SET semantic_tags = ARRAY['可乐','饮料','喝的','碳酸饮料','饮品'] WHERE sku = 'SKU-0006';
+UPDATE kb_goods SET semantic_tags = ARRAY['泡面','方便面','速食','吃的','食品'] WHERE sku = 'SKU-0007';
+UPDATE kb_goods SET semantic_tags = ARRAY['零食','巧克力','吃的','食品'] WHERE sku = 'SKU-0008';
+UPDATE kb_goods SET semantic_tags = ARRAY['红牛','饮料','喝的','功能饮料','饮品'] WHERE sku = 'SKU-0009';
+UPDATE kb_goods SET semantic_tags = ARRAY['玻璃水','汽配','车用','养护'] WHERE sku = 'SKU-0010';
+UPDATE kb_goods SET semantic_tags = ARRAY['机油','汽配','车用','养护','润滑'] WHERE sku = 'SKU-0011';
+UPDATE kb_goods SET semantic_tags = ARRAY['充电器','汽配','车用','数码'] WHERE sku = 'SKU-0012';
+UPDATE kb_goods SET semantic_tags = ARRAY['湿纸巾','日用品','清洁','纸巾'] WHERE sku = 'SKU-0013';
+UPDATE kb_goods SET semantic_tags = ARRAY['纸杯','日用品','一次性'] WHERE sku = 'SKU-0014';
+UPDATE kb_goods SET semantic_tags = ARRAY['尿素','汽配','车用','柴油车'] WHERE sku = 'SKU-0015';
+UPDATE kb_goods SET semantic_tags = ARRAY['热狗','热食','吃的','食品','餐饮','熟食'] WHERE sku = 'SKU-0016';
+UPDATE kb_goods SET semantic_tags = ARRAY['茶叶蛋','热食','吃的','食品','餐饮','熟食','蛋'] WHERE sku = 'SKU-0017';
+UPDATE kb_goods SET semantic_tags = ARRAY['关东煮','热食','吃的','食品','餐饮','熟食'] WHERE sku = 'SKU-0018';
+UPDATE kb_goods SET semantic_tags = ARRAY['洗车','服务','券'] WHERE sku = 'SKU-0019';
+UPDATE kb_goods SET semantic_tags = ARRAY['加油卡','充值','服务','卡'] WHERE sku = 'SKU-0020';
+UPDATE kb_goods SET semantic_tags = ARRAY['可乐','饮料','喝的','碳酸饮料','饮品'] WHERE sku = 'SKU-0021';
+UPDATE kb_goods SET semantic_tags = ARRAY['脉动','饮料','喝的','运动饮料','饮品'] WHERE sku = 'SKU-0022';
+UPDATE kb_goods SET semantic_tags = ARRAY['矿泉水','农夫山泉','饮料','喝的','水','饮品'] WHERE sku = 'SKU-0023';
+UPDATE kb_goods SET semantic_tags = ARRAY['冰红茶','饮料','喝的','茶饮料','饮品'] WHERE sku = 'SKU-0024';
+UPDATE kb_goods SET semantic_tags = ARRAY['防冻液','汽配','车用','养护','冷却液'] WHERE sku = 'SKU-0025';

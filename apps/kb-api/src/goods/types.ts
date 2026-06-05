@@ -7,6 +7,7 @@ export interface GoodsRecord {
   name: string;
   navigationPoint?: string;
   price: number;
+  semanticTags: string[];
   shelfLocation: string;
   sku: string;
   spec?: string;
@@ -20,6 +21,7 @@ export interface GoodsRow {
   navigation_point: null | string;
   price: string;
   published_at: Date | null;
+  semantic_tags: string[];
   shelf_location: string;
   sku: string;
   spec: null | string;
@@ -34,6 +36,7 @@ export function toGoodsRecord(row: GoodsRow): GoodsRecord {
     sku: row.sku,
     name: row.name,
     price: Number(row.price),
+    semanticTags: row.semantic_tags ?? [],
     shelfLocation: row.shelf_location,
     status: row.status,
   };

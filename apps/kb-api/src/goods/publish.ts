@@ -1,6 +1,7 @@
 import type { GoodsRow } from './types.js';
 
 import { resolveGoodsCategoryLabel } from './query-normalize.js';
+import { formatSemanticTagsForEmbed } from './semantic-tags.js';
 
 export function validateGoodsPublish(
   goods: Pick<GoodsRow, 'name' | 'price' | 'shelf_location'>,
@@ -26,6 +27,7 @@ export function formatPublishError(issues: string[]) {
 export function buildGoodsEmbedText(goods: {
   name: string;
   navigation_point?: null | string;
+  semantic_tags?: string[];
   shelf_location: string;
   spec?: null | string;
 }) {
@@ -33,6 +35,7 @@ export function buildGoodsEmbedText(goods: {
     goods.navigation_point ? `区域：${goods.navigation_point.trim()}` : null,
     `商品：${goods.name.trim()}`,
     goods.spec ? `规格：${goods.spec.trim()}` : null,
+    formatSemanticTagsForEmbed(goods.semantic_tags ?? []),
     `货架：${goods.shelf_location.trim()}`,
   ].filter(Boolean);
   return parts.join('，');

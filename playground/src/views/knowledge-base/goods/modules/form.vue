@@ -33,14 +33,20 @@ const [Drawer, drawerApi] = useVbenDrawer({
     const { valid } = await formApi.validate();
     if (!valid) return;
 
-    const values = await formApi.getValues<KnowledgeGoodsApi.GoodsPayload>();
+    const values = await formApi.getValues<
+      KnowledgeGoodsApi.GoodsPayload & { semanticTagsText?: string }
+    >();
+    const payload: KnowledgeGoodsApi.GoodsPayload = {
+      ...values,
+      semanticTags: parseSemanticTagsText(values.semanticTagsText),
+    };
     drawerApi.lock();
     try {
       if (goodsId.value) {
-        await updateGoods(goodsId.value, values);
+        await updateGoods(goodsId.value, payload);
         message.success('商品更新成功');
       } else {
-        await createGoods(values);
+        await createGoods(payload);
         message.success('商品新增成功');
       }
       emits('success');
@@ -61,7 +67,10 @@ const [Drawer, drawerApi] = useVbenDrawer({
     await nextTick();
 
     if (data?.id) {
-      formApi.setValues(data);
+      formApi.setValues({
+        ...data,
+        semanticTagsText: data.semanticTags?.join('，') ?? '',
+      });
       return;
     }
 
@@ -76,6 +85,20 @@ const [Drawer, drawerApi] = useVbenDrawer({
 });
 
 const drawerTitle = computed(() => (goodsId.value ? '编辑商品' : '新增商品'));
+
+function parseSemanticTagsText(text?: string) {
+  if (!text?.trim()) {
+    return [];
+  }
+  return [
+    ...new Set(
+      text
+        .split(/[,，、\s/|]+/u)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
 </script>
 
 <template>

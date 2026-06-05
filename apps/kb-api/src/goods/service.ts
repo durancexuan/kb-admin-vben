@@ -34,6 +34,7 @@ import {
   setGoodsStatus,
   updateGoods,
 } from './repository.js';
+import { normalizeSemanticTags } from './semantic-tags.js';
 import { toGoodsRecord } from './types.js';
 
 export class GoodsService {
@@ -43,6 +44,7 @@ export class GoodsService {
     name: string;
     navigationPoint?: string;
     price: number;
+    semanticTags?: string[];
     shelfLocation: string;
     sku?: string;
     spec?: string;
@@ -50,6 +52,7 @@ export class GoodsService {
     const sku = payload.sku ?? (await generateNextSku(this.stationId));
     const row = await createGoods({
       ...payload,
+      semanticTags: normalizeSemanticTags(payload.semanticTags),
       sku,
       stationId: this.stationId,
     });
@@ -263,6 +266,7 @@ export class GoodsService {
       name: string;
       navigationPoint?: string;
       price: number;
+      semanticTags?: string[];
       shelfLocation: string;
       spec?: string;
     },
@@ -274,6 +278,7 @@ export class GoodsService {
 
     const row = await updateGoods(id, {
       ...payload,
+      semanticTags: normalizeSemanticTags(payload.semanticTags),
       stationId: this.stationId,
     });
     if (!row) {

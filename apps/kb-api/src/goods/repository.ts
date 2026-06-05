@@ -5,7 +5,7 @@ import { query } from '../db/pool.js';
 
 const goodsColumns = `
   id, station_id, sku, name, price, shelf_location, spec, navigation_point,
-  status, embed_status, updated_at, published_at
+  semantic_tags, status, embed_status, updated_at, published_at
 `;
 
 export async function listGoods(params: {
@@ -22,7 +22,14 @@ export async function listGoods(params: {
   if (params.keyword) {
     values.push(`%${params.keyword}%`);
     const idx = values.length;
-    sql += ` AND (sku ILIKE $${idx} OR name ILIKE $${idx})`;
+    sql += ` AND (
+      sku ILIKE $${idx}
+      OR name ILIKE $${idx}
+      OR EXISTS (
+        SELECT 1 FROM unnest(COALESCE(semantic_tags, '{}')) AS tag
+        WHERE tag ILIKE $${idx}
+      )
+    )`;
   }
 
   // 新建在前；种子数据 created_at 相同时按 SKU 倒序（SKU-0025 在 SKU-0001 前）
@@ -71,6 +78,7 @@ export async function createGoods(payload: {
   name: string;
   navigationPoint?: string;
   price: number;
+  semanticTags: string[];
   shelfLocation: string;
   sku: string;
   spec?: string;
@@ -78,9 +86,10 @@ export async function createGoods(payload: {
 }) {
   const result = await query<GoodsRow>(
     `INSERT INTO kb_goods (
-       station_id, sku, name, price, shelf_location, spec, navigation_point, status, embed_status
+       station_id, sku, name, price, shelf_location, spec, navigation_point,
+       semantic_tags, status, embed_status
      )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft', 'none')
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft', 'none')
      RETURNING ${goodsColumns}`,
     [
       payload.stationId,
@@ -90,6 +99,7 @@ export async function createGoods(payload: {
       payload.shelfLocation,
       payload.spec ?? null,
       payload.navigationPoint ?? null,
+      payload.semanticTags,
     ],
   );
   const row = result.rows[0];
@@ -105,6 +115,7 @@ export async function updateGoods(
     name: string;
     navigationPoint?: string;
     price: number;
+    semanticTags: string[];
     shelfLocation: string;
     spec?: string;
     stationId: string;
@@ -117,6 +128,7 @@ export async function updateGoods(
          shelf_location = $5,
          spec = $6,
          navigation_point = $7,
+         semantic_tags = $8,
          updated_at = now()
      WHERE id = $1 AND station_id = $2
      RETURNING ${goodsColumns}`,
@@ -128,6 +140,7 @@ export async function updateGoods(
       payload.shelfLocation,
       payload.spec ?? null,
       payload.navigationPoint ?? null,
+      payload.semanticTags,
     ],
   );
   return result.rows[0] ?? null;
@@ -192,12 +205,21 @@ export async function searchGoodsByKeyword(params: {
          CASE WHEN lower(trim(g.name)) = lower(trim($2)) THEN 1.0 ELSE 0 END,
          CASE WHEN g.name ILIKE '%' || $2 || '%' THEN 0.92 ELSE 0 END,
          CASE WHEN g.sku ILIKE '%' || $2 || '%' THEN 1.0 ELSE 0 END,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM unnest(COALESCE(g.semantic_tags, '{}')) AS tag
+           WHERE lower(trim(tag)) = lower(trim($2))
+         ) THEN 0.9 ELSE 0 END,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM unnest(COALESCE(g.semantic_tags, '{}')) AS tag
+           WHERE tag ILIKE '%' || $2 || '%' OR $2 ILIKE '%' || tag || '%'
+         ) THEN 0.86 ELSE 0 END,
          CASE WHEN COALESCE(g.spec, '') ILIKE '%' || $2 || '%' THEN 0.85 ELSE 0 END,
          CASE WHEN COALESCE(g.navigation_point, '') ILIKE '%' || $2 || '%' THEN 0.75 ELSE 0 END,
          CASE WHEN g.shelf_location ILIKE '%' || $2 || '%' THEN 0.7 ELSE 0 END,
          similarity(g.name, $2),
          COALESCE(similarity(g.navigation_point, $2), 0),
-         COALESCE(similarity(g.spec, $2), 0)
+         COALESCE(similarity(g.spec, $2), 0),
+         COALESCE(similarity(array_to_string(COALESCE(g.semantic_tags, '{}'), ' '), $2), 0)
        ) AS keyword_score
      FROM kb_goods g
      WHERE g.station_id = $1
@@ -208,8 +230,13 @@ export async function searchGoodsByKeyword(params: {
          OR g.spec ILIKE '%' || $2 || '%'
          OR g.navigation_point ILIKE '%' || $2 || '%'
          OR g.shelf_location ILIKE '%' || $2 || '%'
+         OR EXISTS (
+           SELECT 1 FROM unnest(COALESCE(g.semantic_tags, '{}')) AS tag
+           WHERE tag ILIKE '%' || $2 || '%' OR $2 ILIKE '%' || tag || '%'
+         )
          OR similarity(g.name, $2) > 0.08
          OR COALESCE(similarity(g.navigation_point, $2), 0) > 0.08
+         OR COALESCE(similarity(array_to_string(COALESCE(g.semantic_tags, '{}'), ' '), $2), 0) > 0.08
        )
      ORDER BY keyword_score DESC
      LIMIT $3`,

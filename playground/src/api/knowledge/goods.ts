@@ -10,6 +10,7 @@ export namespace KnowledgeGoodsApi {
     name: string;
     navigationPoint?: string;
     price: number;
+    semanticTags?: string[];
     shelfLocation: string;
     sku: string;
     spec?: string;
@@ -29,7 +30,13 @@ export namespace KnowledgeGoodsApi {
 
   export type GoodsPayload = Pick<
     Goods,
-    'name' | 'navigationPoint' | 'price' | 'shelfLocation' | 'sku' | 'spec'
+    | 'name'
+    | 'navigationPoint'
+    | 'price'
+    | 'semanticTags'
+    | 'shelfLocation'
+    | 'sku'
+    | 'spec'
   >;
 }
 

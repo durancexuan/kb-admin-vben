@@ -9,12 +9,14 @@ import {
   useResponseSuccess,
 } from '../common/response.js';
 import { validateGoodsPayload } from './publish.js';
+import { normalizeSemanticTags } from './semantic-tags.js';
 import { goodsService } from './service.js';
 
 const goodsPayloadSchema = z.object({
   name: z.string(),
   navigationPoint: z.string().optional(),
   price: z.number(),
+  semanticTags: z.union([z.array(z.string()), z.string()]).optional(),
   shelfLocation: z.string(),
   sku: z.string().optional(),
   spec: z.string().optional(),
@@ -62,6 +64,7 @@ export async function registerGoodsRoutes(app: FastifyInstance) {
         name: body.name.trim(),
         navigationPoint: body.navigationPoint?.trim() || undefined,
         price: body.price,
+        semanticTags: normalizeSemanticTags(body.semanticTags),
         shelfLocation: body.shelfLocation.trim(),
         sku: body.sku?.trim() || undefined,
         spec: body.spec?.trim() || undefined,
@@ -87,6 +90,7 @@ export async function registerGoodsRoutes(app: FastifyInstance) {
         name: body.name.trim(),
         navigationPoint: body.navigationPoint?.trim() || undefined,
         price: body.price,
+        semanticTags: normalizeSemanticTags(body.semanticTags),
         shelfLocation: body.shelfLocation.trim(),
         spec: body.spec?.trim() || undefined,
       });

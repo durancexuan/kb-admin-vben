@@ -71,6 +71,15 @@ export function useFormSchema(): VbenFormSchema[] {
       fieldName: 'navigationPoint',
       label: '导航点位',
     },
+    {
+      component: 'Input',
+      componentProps: {
+        placeholder: '多个标签用逗号分隔，如：热食,吃的,食品',
+      },
+      fieldName: 'semanticTagsText',
+      help: '口语/类目/近义词，用于机器人检索匹配',
+      label: '语义标签',
+    },
   ];
 }
 
@@ -101,6 +110,15 @@ export function useColumns(
       field: 'name',
       minWidth: 160,
       title: '商品名称',
+    },
+    {
+      field: 'semanticTags',
+      formatter: ({ cellValue }) => {
+        const tags = cellValue as string[] | undefined;
+        return tags?.length ? tags.join('、') : '-';
+      },
+      minWidth: 180,
+      title: '分类标签',
     },
     {
       field: 'price',
