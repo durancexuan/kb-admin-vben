@@ -84,7 +84,17 @@ GROUP BY c.id ORDER BY c.created_at DESC LIMIT 5;
 
 See [README.zh-CN.md](./README.zh-CN.md) for full Chinese docs.
 
-Robot API: `POST /api/robot/knowledge/query` — unified FAQ, goods, and campaign retrieval.
+### Robot / Agent API
+
+Requires `pnpm dev:kb-api` (default `http://127.0.0.1:8080`).
+
+```http
+POST /api/robot/knowledge/query
+Header: X-Robot-Api-Key: robot-dev-key
+Body:   { "utterance": "卫生间在哪里" }
+```
+
+Example: `POST http://127.0.0.1:8080/api/robot/knowledge/query` — unified FAQ, goods, and campaign retrieval.
 
 See [`apps/kb-api/README.md`](./apps/kb-api/README.md).
 

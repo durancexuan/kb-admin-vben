@@ -1,0 +1,40 @@
+# 生产部署：Postgres + kb-api（在 apps/kb-api 目录执行）
+#   cp .env.production.example .env && 编辑 .env
+#   docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: kb-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kb
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kb_secret_change_me}
+      POSTGRES_DB: kb
+    volumes:
+      - kb_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: CMD-SHELL pg_isready -U kb -d kb
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kb-api:
+    build:
+      context: ../..
+      dockerfile: apps/kb-api/Dockerfile
+    container_name: kb-api-prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://kb:${POSTGRES_PASSWORD:-kb_secret_change_me}@postgres:5432/kb
+      PORT: 8080
+    ports:
+      - '${KB_API_PORT:-8080}:8080'
+
+volumes:
+  kb_pg_data:

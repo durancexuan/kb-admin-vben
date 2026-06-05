@@ -194,6 +194,47 @@ export async function setCampaignStatus(
   return result.rows[0] ?? null;
 }
 
+export async function listActiveOnlineCampaigns(params: {
+  limit: number;
+  stationId: string;
+}) {
+  const result = await query<{
+    applicable_goods: string;
+    discount: string;
+    id: string;
+    name: string;
+    start_date: Date;
+  }>(
+    `SELECT
+       c.id,
+       c.name,
+       c.discount,
+       c.start_date,
+       COALESCE(string_agg(g.name, ', ' ORDER BY g.name), '') AS applicable_goods
+     FROM kb_campaign c
+     LEFT JOIN kb_campaign_goods cg ON cg.campaign_id = c.id
+     LEFT JOIN kb_goods g ON g.id = cg.goods_id
+     WHERE c.station_id = $1
+       AND c.status = 'online'
+       AND c.end_date >= CURRENT_DATE
+     GROUP BY c.id, c.name, c.discount, c.start_date
+     ORDER BY c.start_date DESC
+     LIMIT $2`,
+    [params.stationId, params.limit],
+  );
+
+  return result.rows.map((row) => ({
+    applicableGoods: row.applicable_goods,
+    discount: row.discount,
+    id: row.id,
+    name: row.name,
+    startDate:
+      row.start_date instanceof Date
+        ? row.start_date.toISOString().slice(0, 10)
+        : String(row.start_date).slice(0, 10),
+  }));
+}
+
 export async function searchCampaignByKeyword(params: {
   limit: number;
   queryText: string;

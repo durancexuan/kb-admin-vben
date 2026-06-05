@@ -168,14 +168,21 @@ export class QaService {
 
     return {
       hit,
-      items: items.map((item) => ({
-        answer: item.answer,
-        category: item.category,
-        confidence: Number(item.score.toFixed(4)),
-        id: item.id,
-        matchType: resolveMatchType(item.vectorScore, item.keywordScore),
-        question: item.question,
-      })),
+      items: items.map((item) => {
+        const matchType = resolveMatchType(item.vectorScore, item.keywordScore);
+        return {
+          answer: item.answer,
+          category: item.category,
+          confidence: Number(item.score.toFixed(4)),
+          id: item.id,
+          matchType,
+          question: item.question,
+          vectorConfidence:
+            item.vectorScore > 0
+              ? Number(item.vectorScore.toFixed(4))
+              : undefined,
+        };
+      }),
     };
   }
 

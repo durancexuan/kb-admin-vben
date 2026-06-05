@@ -19,6 +19,11 @@ export default defineConfig(async () => {
             changeOrigin: true,
             target: 'http://127.0.0.1:8080',
           },
+          // 机器人统一检索（须在通用 /api Mock 规则之前）
+          '/api/robot': {
+            changeOrigin: true,
+            target: 'http://127.0.0.1:8080',
+          },
           '/api': {
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/api/, ''),

@@ -6,8 +6,20 @@ import {
   embeddingService,
   upsertGoodsEmbedding,
 } from '../embedding/embedding.service.js';
-import { formatPublishError, validateGoodsPublish } from './publish.js';
-import { normalizeGoodsUtterance } from './query-normalize.js';
+import {
+  buildGoodsCatalogSpeakReply,
+  formatPublishError,
+  validateGoodsPublish,
+} from './publish.js';
+import {
+  expandGoodsSearchQueries,
+  GOODS_CATALOG_INQUIRY_CONFIDENCE,
+  GOODS_CATALOG_TAIL_SKU_COUNT,
+  goodsSemanticEmbedTexts,
+  isGoodsCatalogInquiryIntent,
+  normalizeGoodsUtterance,
+  parseGoodsSkuNumber,
+} from './query-normalize.js';
 import {
   countGoodsEmbeddings,
   createGoods,
@@ -100,12 +112,21 @@ export class GoodsService {
 
   async retrieve(params: { topK?: number; utterance: string }) {
     const topK = params.topK ?? 5;
-    const utterance = normalizeGoodsUtterance(params.utterance.trim());
-    if (!utterance) {
+    const raw = params.utterance.trim();
+    if (!raw) {
       return { hit: false as const, items: [] };
     }
 
-    const skuMatch = utterance.match(/SKU-\d+/i);
+    if (isGoodsCatalogInquiryIntent(raw)) {
+      return this.retrieveGoodsCatalogInquiry();
+    }
+
+    const normalized = normalizeGoodsUtterance(raw);
+    if (!normalized) {
+      return { hit: false as const, items: [] };
+    }
+
+    const skuMatch = normalized.match(/SKU-\d+/i);
     if (skuMatch) {
       const exact = await findGoodsBySku(skuMatch[0], this.stationId);
       if (exact) {
@@ -122,55 +143,80 @@ export class GoodsService {
               shelfLocation: exact.shelf_location,
               sku: exact.sku,
               spec: exact.spec,
+              speak: undefined as string | undefined,
+              vectorConfidence: undefined,
             },
           ],
         };
       }
     }
 
-    const keywordHits = await searchGoodsByKeyword({
-      limit: topK,
-      queryText: utterance,
-      stationId: this.stationId,
-    });
-
-    let vectorHits: Awaited<ReturnType<typeof searchGoodsByVector>> = [];
-    const embeddingCount = await countGoodsEmbeddings(this.stationId);
-    if (embeddingCount > 0) {
-      const queryVector = await embeddingService.embed(utterance);
-      vectorHits = await searchGoodsByVector({
-        limit: topK,
-        stationId: this.stationId,
-        vector: queryVector,
-      });
-    }
+    const searchQueries = expandGoodsSearchQueries(raw);
 
     const merged = new Map<
       string,
-      (typeof keywordHits)[number] & {
+      {
+        id: string;
         keywordScore: number;
+        name: string;
+        navigationPoint: null | string;
+        price: string;
+        score: number;
+        shelfLocation: string;
+        sku: string;
+        spec: null | string;
         vectorScore: number;
       }
     >();
 
-    for (const item of keywordHits) {
-      merged.set(item.id, item);
+    for (const queryText of searchQueries) {
+      const keywordHits = await searchGoodsByKeyword({
+        limit: topK,
+        queryText,
+        stationId: this.stationId,
+      });
+      for (const item of keywordHits) {
+        const existing = merged.get(item.id);
+        if (!existing || item.keywordScore > existing.keywordScore) {
+          const vectorScore = existing?.vectorScore ?? 0;
+          merged.set(item.id, {
+            ...item,
+            vectorScore,
+            score: mergeGoodsRetrieveScore(item.keywordScore, vectorScore),
+          });
+        }
+      }
     }
 
-    for (const item of vectorHits) {
-      const existing = merged.get(item.id);
-      if (existing) {
-        existing.vectorScore = item.vectorScore;
-        existing.score = mergeGoodsRetrieveScore(
-          existing.keywordScore,
-          item.vectorScore,
-        );
-      } else {
-        merged.set(item.id, {
-          ...item,
-          keywordScore: 0,
-          score: mergeGoodsRetrieveScore(0, item.vectorScore),
+    const embeddingCount = await countGoodsEmbeddings(this.stationId);
+    if (embeddingCount > 0) {
+      const semanticTexts = goodsSemanticEmbedTexts(raw);
+      for (const embedText of semanticTexts) {
+        const queryVector = await embeddingService.embed(embedText);
+        const vectorHits = await searchGoodsByVector({
+          limit: topK,
+          stationId: this.stationId,
+          vector: queryVector,
         });
+        for (const item of vectorHits) {
+          const existing = merged.get(item.id);
+          if (existing) {
+            existing.vectorScore = Math.max(
+              existing.vectorScore,
+              item.vectorScore,
+            );
+            existing.score = mergeGoodsRetrieveScore(
+              existing.keywordScore,
+              existing.vectorScore,
+            );
+          } else {
+            merged.set(item.id, {
+              ...item,
+              keywordScore: 0,
+              score: mergeGoodsRetrieveScore(0, item.vectorScore),
+            });
+          }
+        }
       }
     }
 
@@ -189,17 +235,25 @@ export class GoodsService {
 
     return {
       hit,
-      items: items.map((item) => ({
-        confidence: Number(item.score.toFixed(4)),
-        id: item.id,
-        matchType: resolveMatchType(item.vectorScore, item.keywordScore),
-        name: item.name,
-        navigationPoint: item.navigationPoint,
-        price: Number(item.price),
-        shelfLocation: item.shelfLocation,
-        sku: item.sku,
-        spec: item.spec,
-      })),
+      items: items.map((item) => {
+        const matchType = resolveMatchType(item.vectorScore, item.keywordScore);
+        return {
+          confidence: Number(item.score.toFixed(4)),
+          id: item.id,
+          matchType,
+          name: item.name,
+          navigationPoint: item.navigationPoint,
+          price: Number(item.price),
+          shelfLocation: item.shelfLocation,
+          sku: item.sku,
+          spec: item.spec,
+          speak: undefined as string | undefined,
+          vectorConfidence:
+            item.vectorScore > 0
+              ? Number(item.vectorScore.toFixed(4))
+              : undefined,
+        };
+      }),
     };
   }
 
@@ -231,6 +285,38 @@ export class GoodsService {
     }
 
     return toGoodsRecord(row);
+  }
+
+  private async retrieveGoodsCatalogInquiry() {
+    const rows = await listOnlineGoods(this.stationId);
+    const sorted = rows.toSorted(
+      (a, b) => parseGoodsSkuNumber(a.sku) - parseGoodsSkuNumber(b.sku),
+    );
+    const tailGoods = sorted.slice(-GOODS_CATALOG_TAIL_SKU_COUNT);
+    const speak = buildGoodsCatalogSpeakReply(sorted, tailGoods);
+    const confidence = GOODS_CATALOG_INQUIRY_CONFIDENCE;
+    const hit = confidence >= config.MIN_RETRIEVE_SCORE;
+    const primary = tailGoods.at(-1) ?? sorted.at(-1);
+
+    return {
+      hit,
+      items: [
+        {
+          confidence,
+          id: primary?.id ?? '',
+          matchType: 'intent' as const,
+          name:
+            sorted.length > 0 ? `在售商品（${sorted.length}件）` : '在售商品',
+          navigationPoint: primary?.navigation_point ?? null,
+          price: primary ? Number(primary.price) : 0,
+          shelfLocation: primary?.shelf_location ?? '',
+          sku: primary?.sku ?? '',
+          spec: primary?.spec ?? null,
+          speak,
+          vectorConfidence: undefined,
+        },
+      ],
+    };
   }
 
   private async syncEmbedding(row: GoodsRow) {

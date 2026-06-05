@@ -1,5 +1,7 @@
 import type { GoodsRow } from './types.js';
 
+import { resolveGoodsCategoryLabel } from './query-normalize.js';
+
 export function validateGoodsPublish(
   goods: Pick<GoodsRow, 'name' | 'price' | 'shelf_location'>,
 ) {
@@ -70,4 +72,52 @@ export function buildGoodsSpeakReply(goods: {
     : `货架 ${goods.shelf_location}`;
   const spec = goods.spec ? `，规格 ${goods.spec}` : '';
   return `${goods.name}${spec}，售价 ${price} 元，位于 ${location}。`;
+}
+
+export function buildGoodsCatalogSpeakReply(
+  allGoods: Array<{
+    name: string;
+    navigation_point: null | string;
+    price: number | string;
+    shelf_location: string;
+    sku: string;
+  }>,
+  tailGoods: Array<{
+    name: string;
+    price: number | string;
+    sku: string;
+  }>,
+) {
+  if (allGoods.length === 0) {
+    return '近期暂无可售商品，欢迎常来看看。';
+  }
+
+  const groups = new Map<string, string[]>();
+  for (const item of allGoods) {
+    const category = resolveGoodsCategoryLabel(item);
+    const names = groups.get(category) ?? [];
+    names.push(item.name);
+    groups.set(category, names);
+  }
+
+  const categoryParts = [...groups.entries()].map(([category, names]) => {
+    const sample = names.slice(0, 2).join('、');
+    const countText =
+      names.length > 2 ? `等${names.length}件` : `共${names.length}件`;
+    return `${category}有${sample}${countText}`;
+  });
+
+  const tailParts =
+    tailGoods.length > 0
+      ? tailGoods.map((item, index) => {
+          const price = Number(item.price);
+          return `${index + 1}、${item.name}（${item.sku}）${price} 元`;
+        })
+      : [];
+
+  const categoryIntro = `本站在售共 ${groups.size} 个类目：${categoryParts.join('；')}`;
+  if (tailParts.length === 0) {
+    return `${categoryIntro}。`;
+  }
+  return `${categoryIntro}。SKU 靠后的三款：${tailParts.join('；')}。`;
 }

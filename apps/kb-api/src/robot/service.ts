@@ -1,10 +1,16 @@
 import type { QaCategory } from '../qa/types.js';
-import type { RobotLibrary, RobotQueryResult } from './types.js';
+import type {
+  RobotLibrary,
+  RobotMatchType,
+  RobotQueryResult,
+} from './types.js';
 
 import { buildCampaignSpeakReply } from '../campaign/publish.js';
+import { isCampaignInquiryIntent } from '../campaign/query-normalize.js';
 import { campaignService } from '../campaign/service.js';
 import { config } from '../config.js';
 import { buildGoodsSpeakReply } from '../goods/publish.js';
+import { isGoodsCatalogInquiryIntent } from '../goods/query-normalize.js';
 import { findGoodsById } from '../goods/repository.js';
 import { goodsService } from '../goods/service.js';
 import { qaService } from '../qa/service.js';
@@ -15,7 +21,30 @@ interface RankedAnswer {
   confidence: number;
   display: string;
   library: RobotLibrary;
+  matchType: RobotMatchType;
   speak: string;
+  vectorConfidence?: number;
+}
+
+function toRobotResult(
+  utterance: string,
+  best: RankedAnswer,
+  hit: boolean,
+): RobotQueryResult {
+  return {
+    utterance,
+    hit,
+    library: hit ? best.library : null,
+    libraryLabel: hit ? ROBOT_LIBRARY_LABEL[best.library] : null,
+    confidence: roundConfidence(best.confidence),
+    vectorConfidence:
+      best.vectorConfidence === undefined
+        ? null
+        : roundConfidence(best.vectorConfidence),
+    matchType: hit ? best.matchType : null,
+    display: hit ? best.display : null,
+    speak: hit ? best.speak : null,
+  };
 }
 
 function roundConfidence(value: number) {
@@ -29,21 +58,15 @@ function buildMiss(utterance: string): RobotQueryResult {
     library: null,
     libraryLabel: null,
     confidence: null,
+    vectorConfidence: null,
+    matchType: null,
     display: null,
     speak: null,
   };
 }
 
 function buildHit(utterance: string, best: RankedAnswer): RobotQueryResult {
-  return {
-    utterance,
-    hit: true,
-    library: best.library,
-    libraryLabel: ROBOT_LIBRARY_LABEL[best.library],
-    confidence: roundConfidence(best.confidence),
-    display: best.display,
-    speak: best.speak,
-  };
+  return toRobotResult(utterance, best, true);
 }
 
 function buildBelowThreshold(
@@ -56,9 +79,25 @@ function buildBelowThreshold(
     library: null,
     libraryLabel: null,
     confidence: roundConfidence(best.confidence),
+    vectorConfidence:
+      best.vectorConfidence === undefined
+        ? null
+        : roundConfidence(best.vectorConfidence),
+    matchType: best.matchType,
     display: null,
     speak: null,
   };
+}
+
+function pickVectorConfidence(item: { vectorConfidence?: number }) {
+  return item.vectorConfidence;
+}
+
+function pickMatchType(
+  item: { matchType?: RobotMatchType },
+  fallback: RobotMatchType,
+) {
+  return item.matchType ?? fallback;
 }
 
 export async function unifiedKnowledgeRetrieve(params: {
@@ -67,6 +106,64 @@ export async function unifiedKnowledgeRetrieve(params: {
 }) {
   const utterance = params.utterance.trim();
   if (!utterance) {
+    return buildMiss(utterance);
+  }
+
+  if (isCampaignInquiryIntent(utterance)) {
+    const campaignResult = await campaignService.retrieve({
+      topK: 5,
+      utterance,
+    });
+    const campaignBest = campaignResult.items[0];
+    if (campaignBest) {
+      const ranked: RankedAnswer = {
+        library: 'campaign',
+        confidence: campaignBest.confidence ?? 0,
+        display: campaignBest.name,
+        matchType: pickMatchType(campaignBest, 'intent'),
+        speak:
+          campaignBest.speak ??
+          (campaignBest.id
+            ? buildCampaignSpeakReply(campaignBest)
+            : campaignBest.name),
+      };
+      if (ranked.confidence >= config.MIN_RETRIEVE_SCORE) {
+        return buildHit(utterance, ranked);
+      }
+      return buildBelowThreshold(utterance, ranked);
+    }
+    return buildMiss(utterance);
+  }
+
+  if (isGoodsCatalogInquiryIntent(utterance)) {
+    const goodsResult = await goodsService.retrieve({
+      topK: 1,
+      utterance,
+    });
+    const goodsBest = goodsResult.items[0];
+    if (goodsBest) {
+      const ranked: RankedAnswer = {
+        library: 'goods',
+        confidence: goodsBest.confidence ?? 0,
+        display: goodsBest.name,
+        matchType: pickMatchType(goodsBest, 'intent'),
+        speak:
+          goodsBest.speak ??
+          (goodsBest.id
+            ? buildGoodsSpeakReply({
+                name: goodsBest.name,
+                navigation_point: goodsBest.navigationPoint,
+                price: goodsBest.price,
+                shelf_location: goodsBest.shelfLocation,
+                spec: goodsBest.spec,
+              })
+            : goodsBest.name),
+      };
+      if (ranked.confidence >= config.MIN_RETRIEVE_SCORE) {
+        return buildHit(utterance, ranked);
+      }
+      return buildBelowThreshold(utterance, ranked);
+    }
     return buildMiss(utterance);
   }
 
@@ -84,30 +181,38 @@ export async function unifiedKnowledgeRetrieve(params: {
       library: 'qa',
       confidence: qaBest.confidence ?? 0,
       display: qaBest.question,
+      matchType: pickMatchType(qaBest, 'keyword'),
       speak: qaBest.answer,
+      vectorConfidence: pickVectorConfidence(qaBest),
     });
   }
 
   const goodsBest = goodsResult.items[0];
   if (goodsBest) {
-    const row = await findGoodsById(goodsBest.id);
+    const row = goodsBest.id ? await findGoodsById(goodsBest.id) : null;
     ranked.push({
       library: 'goods',
       confidence: goodsBest.confidence ?? 0,
       display: goodsBest.name,
-      speak: row
-        ? buildGoodsSpeakReply(row)
-        : `${goodsBest.name}，售价 ${goodsBest.price} 元。`,
+      matchType: pickMatchType(goodsBest, 'keyword'),
+      speak:
+        goodsBest.speak ??
+        (row
+          ? buildGoodsSpeakReply(row)
+          : `${goodsBest.name}，售价 ${goodsBest.price} 元。`),
+      vectorConfidence: pickVectorConfidence(goodsBest),
     });
   }
 
   const campaignBest = campaignResult.items[0];
   if (campaignBest) {
+    const speak = campaignBest.speak ?? buildCampaignSpeakReply(campaignBest);
     ranked.push({
       library: 'campaign',
       confidence: campaignBest.confidence ?? 0,
       display: campaignBest.name,
-      speak: buildCampaignSpeakReply(campaignBest),
+      matchType: pickMatchType(campaignBest, 'keyword'),
+      speak,
     });
   }
 

@@ -125,20 +125,36 @@ docker exec -it kb-postgres psql -U kb -d kb
 
 ## 常用命令
 
-| 命令                             | 说明          |
-| -------------------------------- | ------------- |
-| `pnpm dev:play`                  | 管理端        |
-| `pnpm dev:kb-api`                | 知识库 API    |
+| 命令 | 说明 |
+| --- | --- |
+| `pnpm dev:play` | 管理端 |
+| `pnpm dev:kb-api` | 知识库 API |
 | `pnpm -F @vben/kb-api run db:up` | Postgres 容器 |
+| 服务器部署 kb-api | [`apps/kb-api/DEPLOY.zh-CN.md`](./apps/kb-api/DEPLOY.zh-CN.md) |
 
 ## 机器人 / Agent
 
-`POST http://127.0.0.1:8080/api/robot/knowledge/query` — 并行检索三库。看返回 **`data.hit`** 与 **`data.speak`**（播报正文）；**`data.libraryLabel`** 表示来自哪个库。详见 [`apps/kb-api/README.md`](./apps/kb-api/README.md)。
+机器人统一检索入口（需先启动 `pnpm dev:kb-api`，默认 `http://127.0.0.1:8080`）：
+
+```http
+curl.exe -s -X POST "http://127.0.0.1:8080/api/robot/knowledge/query" -H "Content-Type: application/json" -H "X-Robot-Api-Key: robot-dev-key" -d '{\"utterance\":\"卫生间在哪里\"}'
+
+curl.exe -s -X POST "http://127.0.0.1:8080/api/robot/knowledge/query" -H "Content-Type: application/json" -H "X-Robot-Api-Key: robot-dev-key" -d '{\"utterance\":\"最近有没有活动\"}'
+
+curl.exe -s -X POST "http://127.0.0.1:8080/api/robot/knowledge/query" -H "Content-Type: application/json" -H "X-Robot-Api-Key: robot-dev-key" -d '{\"utterance\":\"近期有什么活动\"}'
+
+curl.exe -s -X POST "http://127.0.0.1:8080/api/robot/knowledge/query" -H "Content-Type: application/json" -H "X-Robot-Api-Key: robot-dev-key" -d '{\"utterance\":\"近期有什么商品\"}'
+```
+
+完整 URL 示例：`POST http://127.0.0.1:8080/api/robot/knowledge/query`
+
+并行检索问答、商品、活动三库，只返回置信度最高的一条。看 **`data.hit`**、**`data.speak`**；向量检索时另有 **`data.vectorConfidence`**（语义相似度）与 **`data.matchType`**。对接文档：**[`apps/kb-api/ROBOT_API.zh-CN.md`](./apps/kb-api/ROBOT_API.zh-CN.md)**。
 
 ## 常见问题
 
 - **登录 404**：确认 `Nitro Mock Server` 已启动
 - **三库报错**：先 `db:up` 再 `dev:kb-api`
 - **8080 占用**：结束旧 `node` 进程或改 `apps/kb-api/.env` 中 `PORT`
+- **机器人接口 404 / 返回 HTML**：机器人必须走 **8080** 或管理端代理；`/api/robot` 已单独代理到 kb-api，勿用 `http://localhost:5555/api` 且未配 robot 代理的旧配置。对接方请直接调 `http://127.0.0.1:8080/api/robot/knowledge/query`
 
 [doc.vben.pro](https://doc.vben.pro) · [MIT](./LICENSE)

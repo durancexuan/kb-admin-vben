@@ -1,7 +1,16 @@
+# kb-api 镜像构建（context=仓库根）时排除无关目录
 node_modules
+**/.turbo
+**/dist
 .git
-.gitignore
-*.md
-dist
-.turbo
-dist.zip
+.github
+docs
+playground
+apps/backend-mock
+apps/web-antd
+apps/web-ele
+apps/web-naive
+apps/web-tdesign
+internal
+packages
+scripts

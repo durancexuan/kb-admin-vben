@@ -1,11 +1,21 @@
 import { config } from '../config.js';
-import { formatPublishError, validateCampaignPublish } from './publish.js';
+import {
+  buildCampaignRecentSpeakReply,
+  formatPublishError,
+  validateCampaignPublish,
+} from './publish.js';
+import {
+  CAMPAIGN_INQUIRY_CONFIDENCE,
+  CAMPAIGN_INQUIRY_RECENT_LIMIT,
+  isCampaignInquiryIntent,
+} from './query-normalize.js';
 import {
   countGoodsByIds,
   createCampaign,
   deleteCampaign,
   findCampaignById,
   getCampaignGoodsIds,
+  listActiveOnlineCampaigns,
   listCampaignRows,
   listGoodsOptions,
   resolveGoodsNames,
@@ -110,6 +120,10 @@ export class CampaignService {
       return { hit: false as const, items: [] };
     }
 
+    if (isCampaignInquiryIntent(utterance)) {
+      return this.retrieveCampaignInquiry();
+    }
+
     const hits = await searchCampaignByKeyword({
       limit: topK,
       queryText: utterance,
@@ -123,6 +137,7 @@ export class CampaignService {
       id: item.id,
       matchType: 'keyword' as const,
       name: item.name,
+      speak: undefined as string | undefined,
     }));
 
     const best = items[0];
@@ -156,6 +171,38 @@ export class CampaignService {
       stationId: this.stationId,
     });
     return this.toRecord(row);
+  }
+
+  private async retrieveCampaignInquiry() {
+    const campaigns = await listActiveOnlineCampaigns({
+      limit: CAMPAIGN_INQUIRY_RECENT_LIMIT,
+      stationId: this.stationId,
+    });
+    const speak = buildCampaignRecentSpeakReply(
+      campaigns,
+      CAMPAIGN_INQUIRY_RECENT_LIMIT,
+    );
+    const confidence = CAMPAIGN_INQUIRY_CONFIDENCE;
+    const hit = confidence >= config.MIN_RETRIEVE_SCORE;
+    const primary = campaigns[0];
+
+    return {
+      hit,
+      items: [
+        {
+          applicableGoods: primary?.applicableGoods ?? '',
+          confidence,
+          discount: primary?.discount ?? '',
+          id: primary?.id ?? '',
+          matchType: 'intent' as const,
+          name: primary
+            ? `近期活动（${Math.min(campaigns.length, CAMPAIGN_INQUIRY_RECENT_LIMIT)}条）`
+            : '近期活动',
+          speak,
+          vectorConfidence: undefined,
+        },
+      ],
+    };
   }
 
   private async toRecord(row: Awaited<ReturnType<typeof findCampaignById>>) {

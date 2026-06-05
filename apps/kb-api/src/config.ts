@@ -1,9 +1,15 @@
+import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 import { config as loadEnv } from 'dotenv';
 import { z } from 'zod';
 
-loadEnv();
+const appRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../',
+);
+loadEnv({ path: path.join(appRoot, '.env') });
 
 const envSchema = z.object({
   ACCESS_TOKEN_SECRET: z.string().default('access_token_secret'),

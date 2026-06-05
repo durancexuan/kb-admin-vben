@@ -81,3 +81,26 @@ export function buildCampaignSpeakReply(campaign: {
     : '';
   return `当前活动「${campaign.name}」，${campaign.discount}${goods}。`;
 }
+
+/** 活动汇总：按开始时间由晚到早，最多播报 limit 条 */
+export function buildCampaignRecentSpeakReply(
+  campaigns: Array<{
+    applicableGoods: string;
+    discount: string;
+    name: string;
+    startDate: string;
+  }>,
+  limit: number,
+) {
+  if (campaigns.length === 0) {
+    return '近期暂无进行中的优惠活动，欢迎常来看看。';
+  }
+
+  const recent = campaigns.slice(0, limit);
+  const parts = recent.map((item, index) => {
+    const goods = item.applicableGoods ? `，适用：${item.applicableGoods}` : '';
+    return `${index + 1}、「${item.name}」${item.discount}（${item.startDate} 起）${goods}`;
+  });
+
+  return `按开始时间由晚到早，近期 ${recent.length} 条活动：${parts.join('；')}。`;
+}
