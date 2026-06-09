@@ -1,28 +1,35 @@
+import process from 'node:process';
+
 import { defineConfig } from '@vben/vite-config';
 
-export default defineConfig(async () => {
+import { loadEnv } from 'vite';
+
+export default defineConfig(async (config) => {
+  const env = loadEnv(config?.mode ?? 'development', process.cwd(), '');
+  const kbApiTarget = env.VITE_KB_API_TARGET || 'http://127.0.0.1:8080';
+
   return {
     application: {},
     vite: {
       server: {
         proxy: {
-          // 知识库走真实后端 kb-api（需先 pnpm dev:kb-api）
+          // 知识库走 kb-api（默认本地；.env.development 可设 VITE_KB_API_TARGET 直连服务器）
           '/api/knowledge/qa': {
             changeOrigin: true,
-            target: 'http://127.0.0.1:8080',
+            target: kbApiTarget,
           },
           '/api/knowledge/goods': {
             changeOrigin: true,
-            target: 'http://127.0.0.1:8080',
+            target: kbApiTarget,
           },
           '/api/knowledge/campaign': {
             changeOrigin: true,
-            target: 'http://127.0.0.1:8080',
+            target: kbApiTarget,
           },
           // 机器人统一检索（须在通用 /api Mock 规则之前）
           '/api/robot': {
             changeOrigin: true,
-            target: 'http://127.0.0.1:8080',
+            target: kbApiTarget,
           },
           '/api': {
             changeOrigin: true,

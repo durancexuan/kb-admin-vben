@@ -38,6 +38,20 @@ X-Robot-Api-Key: robot-dev-key
 
 问答/商品在 pgvector 索引命中时，响应除综合 `confidence` 外，另返回 **`vectorConfidence`**（向量相似度）与 **`matchType`**（`keyword` / `vector` / `hybrid` 等）。
 
+## 外部 Embedding API（负责人 GPU）
+
+默认 `local-hash-v1` 仅适合开发。生产在 `.env` 配置 `EMBEDDING_API_URL` 后，kb-api 会调用 GPU 上的向量服务。
+
+**对接说明：[EMBEDDING_API.zh-CN.md](./EMBEDDING_API.zh-CN.md)**
+
+```env
+EMBEDDING_API_URL=http://<GPU-IP>:8080/v1/embeddings
+EMBEDDING_API_MODEL=bge-small-zh-v1.5
+EMBEDDING_API_FORMAT=openai
+```
+
+启动后 `GET /health` 可查看 `embedding.ok` 与当前模型。
+
 ## 数据表
 
 | 表                                  | 说明                     |

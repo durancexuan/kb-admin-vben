@@ -230,7 +230,8 @@ export class QaService {
         stationId: row.station_id,
       });
       await setEmbedStatus(row.id, 'ok', this.stationId);
-    } catch {
+    } catch (error) {
+      console.error('[qa] embedding failed', row.id, error);
       await setEmbedStatus(row.id, 'failed', this.stationId);
     }
   }

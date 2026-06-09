@@ -131,6 +131,8 @@ docker exec -it kb-postgres psql -U kb -d kb
 | `pnpm dev:kb-api` | 知识库 API |
 | `pnpm -F @vben/kb-api run db:up` | Postgres 容器 |
 | 服务器部署 kb-api | [`apps/kb-api/DEPLOY.zh-CN.md`](./apps/kb-api/DEPLOY.zh-CN.md) |
+| **全栈部署到服务器** | 根目录 `pnpm deploy:full`（管理端 **5556** + Mock + kb-api **8089**） |
+| 现网管理端 | http://192.168.13.7:5556/（登录 `vben` / `123456`） |
 
 ## 机器人 / Agent
 
@@ -144,6 +146,12 @@ curl.exe -s -X POST "http://127.0.0.1:8080/api/robot/knowledge/query" -H "Conten
 curl.exe -s -X POST "http://127.0.0.1:8080/api/robot/knowledge/query" -H "Content-Type: application/json" -H "X-Robot-Api-Key: robot-dev-key" -d '{\"utterance\":\"近期有什么活动\"}'
 
 curl.exe -s -X POST "http://127.0.0.1:8080/api/robot/knowledge/query" -H "Content-Type: application/json" -H "X-Robot-Api-Key: robot-dev-key" -d '{\"utterance\":\"近期有什么商品\"}'
+```
+
+进服务器之后的检索：
+
+```http
+curl.exe -s -X POST "http://192.168.13.7:8089/api/robot/knowledge/query" -H "Content-Type: application/json" -H "X-Robot-Api-Key: abba8fd282de1bd03366be58664a033a" -d '{\"utterance\":\"卫生间在哪里\"}'
 ```
 
 完整 URL 示例：`POST http://127.0.0.1:8080/api/robot/knowledge/query`

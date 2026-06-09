@@ -1,17 +1,36 @@
 import type { GoodsRow } from '../goods/types.js';
 import type { QaCategory } from '../qa/types.js';
+import type { EmbeddingHealth } from './client.js';
 
-import { config, hasExternalEmbedding } from '../config.js';
+import { config } from '../config.js';
 import { query } from '../db/pool.js';
 import { buildGoodsEmbedText } from '../goods/publish.js';
 import { buildEmbedText } from '../qa/publish.js';
+import {
+  checkEmbeddingApi,
+  fetchExternalEmbedding,
+  getActiveEmbeddingModelId,
+  isExternalEmbeddingEnabled,
+} from './client.js';
 
 export class EmbeddingService {
+  private lastHealth: EmbeddingHealth | null = null;
+
   async embed(text: string): Promise<number[]> {
-    if (hasExternalEmbedding()) {
-      return this.embedExternal(text);
+    if (isExternalEmbeddingEnabled()) {
+      const vector = await fetchExternalEmbedding(text);
+      return this.fitVector(vector);
     }
     return this.embedLocal(text);
+  }
+
+  getLastHealth() {
+    return this.lastHealth;
+  }
+
+  async probeHealth(probeText = '知识库向量探针') {
+    this.lastHealth = await checkEmbeddingApi(probeText);
+    return this.lastHealth;
   }
 
   toPgVector(vector: number[]) {
@@ -21,37 +40,6 @@ export class EmbeddingService {
   private bump(vec: number[], index: number, delta: number) {
     const slot = ((index % vec.length) + vec.length) % vec.length;
     vec[slot] = (vec[slot] ?? 0) + delta;
-  }
-
-  private async embedExternal(text: string): Promise<number[]> {
-    const apiUrl = config.EMBEDDING_API_URL;
-    if (!apiUrl) {
-      throw new Error('EMBEDDING_API_URL is not configured');
-    }
-    const response = await fetch(apiUrl, {
-      body: JSON.stringify({
-        input: text,
-        model: config.EMBEDDING_API_MODEL,
-      }),
-      headers: {
-        Authorization: `Bearer ${config.EMBEDDING_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
-    });
-
-    if (!response.ok) {
-      throw new Error(`Embedding API failed: ${response.status}`);
-    }
-
-    const payload = (await response.json()) as {
-      data: Array<{ embedding: number[] }>;
-    };
-    const vector = payload.data[0]?.embedding;
-    if (!vector?.length) {
-      throw new Error('Embedding API returned empty vector');
-    }
-    return this.normalize(this.resize(vector, config.EMBEDDING_DIM));
   }
 
   /** 本地可离线运行的字符哈希向量，开发联调够用；生产请配置外部 Embedding API */
@@ -68,6 +56,15 @@ export class EmbeddingService {
     }
 
     return this.normalize(vec);
+  }
+
+  private fitVector(vector: number[]) {
+    if (vector.length !== config.EMBEDDING_DIM) {
+      console.warn(
+        `[embedding] API returned dim=${vector.length}, resizing to EMBEDDING_DIM=${config.EMBEDDING_DIM}`,
+      );
+    }
+    return this.normalize(this.resize(vector, config.EMBEDDING_DIM));
   }
 
   private normalize(vector: number[]) {
@@ -115,9 +112,7 @@ export async function upsertQaEmbedding(qa: {
       qa.stationId,
       embeddingService.toPgVector(vector),
       embedText,
-      hasExternalEmbedding()
-        ? config.EMBEDDING_API_MODEL
-        : config.EMBEDDING_MODEL,
+      getActiveEmbeddingModelId(),
     ],
   );
 }
@@ -144,9 +139,7 @@ export async function upsertGoodsEmbedding(goods: GoodsRow) {
       goods.station_id,
       embeddingService.toPgVector(vector),
       embedText,
-      hasExternalEmbedding()
-        ? config.EMBEDDING_API_MODEL
-        : config.EMBEDDING_MODEL,
+      getActiveEmbeddingModelId(),
     ],
   );
 }

@@ -14,15 +14,18 @@ services:
     volumes:
       - kb_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: CMD-SHELL pg_isready -U kb -d kb
+      test:
+        - CMD-SHELL
+        - pg_isready -U kb -d kb
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 60s
 
   kb-api:
     build:
-      context: ../..
-      dockerfile: apps/kb-api/Dockerfile
+      context: .
+      dockerfile: Dockerfile.standalone
     container_name: kb-api-prod
     restart: unless-stopped
     depends_on:
@@ -34,7 +37,7 @@ services:
       DATABASE_URL: postgresql://kb:${POSTGRES_PASSWORD:-kb_secret_change_me}@postgres:5432/kb
       PORT: 8080
     ports:
-      - '${KB_API_PORT:-8080}:8080'
+      - '${KB_API_PORT:-8089}:8080'
 
 volumes:
   kb_pg_data:

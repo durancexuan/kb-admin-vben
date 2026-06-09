@@ -1,0 +1,83 @@
+# 全栈部署：Postgres + kb-api + Mock 登录 + Nginx 管理端
+# 在服务器 /home/user/kb-admin/deploy 目录执行：
+#   docker compose -f docker-compose.full.yml up -d --build
+
+name: kb-admin
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: kb-postgres-prod
+    restart: unless-stopped
+    env_file:
+      - ../apps/kb-api/.env
+    environment:
+      POSTGRES_USER: kb
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: kb
+    volumes:
+      - kb_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U kb -d kb
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  kb-api:
+    build:
+      context: ../apps/kb-api
+      dockerfile: Dockerfile.standalone
+    container_name: kb-api-prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ../apps/kb-api/.env
+    environment:
+      DATABASE_URL: postgresql://kb:${POSTGRES_PASSWORD}@postgres:5432/kb
+      PORT: 8080
+      ACCESS_TOKEN_SECRET: access_token_secret
+    expose:
+      - '8080'
+    ports:
+      - '${KB_API_PORT:-8089}:8080'
+
+  mock:
+    image: node:22-bookworm-slim
+    container_name: kb-mock-prod
+    restart: unless-stopped
+    working_dir: /app/server
+    volumes:
+      - ./backend-mock-output:/app
+    environment:
+      PORT: 5320
+      NITRO_PORT: 5320
+      HOST: 0.0.0.0
+    command:
+      - sh
+      - -c
+      - npm install --omit=dev && node index.mjs
+    expose:
+      - '5320'
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: kb-admin-nginx
+    restart: unless-stopped
+    depends_on:
+      - kb-api
+      - mock
+    ports:
+      - '${ADMIN_PORT:-5556}:80'
+    volumes:
+      - ./playground-dist:/usr/share/nginx/html:ro
+      - ./nginx/kb-admin.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  kb_pg_data:
+    external: true
+    name: kb-api_kb_pg_data

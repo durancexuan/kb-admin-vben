@@ -19,6 +19,8 @@ export const overridesPreferences = defineOverridesPreferences({
   app: {
     name: import.meta.env.VITE_APP_TITLE || '知识库管理',
     defaultHomePath: '/analytics',
+    // 路由已在 knowledge-base.ts 定义；避免后端菜单模式因 pageMap 未收录新页面而 404
+    accessMode: 'frontend',
   },
 });
 

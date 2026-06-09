@@ -93,7 +93,7 @@
   → confidence ≥ 阈值 → hit=true
 ```
 
-- **问答 / 商品**：有关键词 + 本地向量索引（`local-hash-v1`，表 `kb_qa_embedding` / `kb_goods_embedding`）。
+- **问答 / 商品**：关键词 + pgvector 语义检索（默认 `local-hash-v1`；生产配置 `EMBEDDING_API_URL` 后走 GPU 模型，见 [EMBEDDING_API.zh-CN.md](./EMBEDDING_API.zh-CN.md)）。
 - **活动**：关键词匹配；汇总意图不走向量。
 
 ## 5. 示例

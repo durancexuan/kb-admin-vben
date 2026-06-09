@@ -2,9 +2,10 @@ import cors from '@fastify/cors';
 import Fastify from 'fastify';
 
 import { registerCampaignRoutes } from './campaign/routes.js';
-import { config } from './config.js';
+import { config, hasExternalEmbedding } from './config.js';
 import { migrate } from './db/migrate.js';
 import { pool } from './db/pool.js';
+import { embeddingService } from './embedding/embedding.service.js';
 import { registerGoodsRoutes } from './goods/routes.js';
 import { goodsService } from './goods/service.js';
 import { registerQaRoutes } from './qa/routes.js';
@@ -27,7 +28,40 @@ async function bootstrap() {
     { prefix: '/api' },
   );
 
-  app.get('/health', async () => ({ ok: true }));
+  app.get('/health', async () => {
+    const embedding =
+      embeddingService.getLastHealth() ??
+      (await embeddingService.probeHealth());
+    return {
+      embedding,
+      ok: true,
+    };
+  });
+
+  const embeddingHealth = await embeddingService.probeHealth();
+  if (hasExternalEmbedding()) {
+    if (embeddingHealth.ok) {
+      app.log.info(
+        {
+          dim: embeddingHealth.dim,
+          format: embeddingHealth.format,
+          model: embeddingHealth.model,
+          url: embeddingHealth.url,
+        },
+        'external embedding api ready',
+      );
+    } else {
+      app.log.error(
+        { error: embeddingHealth.error, url: embeddingHealth.url },
+        'external embedding api unavailable; vectors will fail until fixed',
+      );
+    }
+  } else {
+    app.log.warn(
+      { model: embeddingHealth.model },
+      'using local-hash embedding; configure EMBEDDING_API_URL for production',
+    );
+  }
 
   await Promise.all([qaService.reindexOnline(), goodsService.reindexOnline()]);
 

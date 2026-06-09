@@ -17,8 +17,12 @@ const envSchema = z.object({
     .string()
     .default('postgresql://kb:kb_secret@127.0.0.1:5432/kb'),
   DEFAULT_STATION_ID: z.string().default('default'),
+  EMBEDDING_API_FORMAT: z
+    .enum(['openai', 'ollama', 'simple', 'tei'])
+    .default('openai'),
   EMBEDDING_API_KEY: z.string().optional(),
-  EMBEDDING_API_MODEL: z.string().default('text-embedding-3-small'),
+  EMBEDDING_API_MODEL: z.string().default('bge-small-zh-v1.5'),
+  EMBEDDING_API_TIMEOUT_MS: z.coerce.number().default(30_000),
   EMBEDDING_API_URL: z.string().optional(),
   EMBEDDING_DIM: z.coerce.number().default(384),
   EMBEDDING_MODEL: z.string().default('local-hash-v1'),
@@ -30,5 +34,5 @@ const envSchema = z.object({
 export const config = envSchema.parse(process.env);
 
 export function hasExternalEmbedding() {
-  return Boolean(config.EMBEDDING_API_URL && config.EMBEDDING_API_KEY);
+  return Boolean(config.EMBEDDING_API_URL);
 }
