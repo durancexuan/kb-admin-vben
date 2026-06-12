@@ -1,0 +1,27 @@
+FROM python:3.11-slim-bookworm
+
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends build-essential \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY requirements-bge.txt ./
+RUN pip install --no-cache-dir -r requirements-bge.txt
+
+COPY scripts/bge-embedding-server.py ./
+# 离线模型（由 scripts/download-bge-model.py 生成后随部署包上传）
+COPY models/ /models/
+
+ENV BGE_MODEL=BAAI/bge-small-zh-v1.5
+ENV PORT=8090
+ENV HF_HOME=/models
+ENV HF_HUB_OFFLINE=1
+ENV TRANSFORMERS_OFFLINE=1
+
+EXPOSE 8090
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=5 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health')"
+
+CMD ["python", "bge-embedding-server.py"]

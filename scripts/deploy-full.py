@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""全栈部署：playground 静态资源 + backend-mock + kb-api + Nginx → 192.168.13.7"""
+"""全栈部署：playground + mock + kb-api + BGE 离线模型 → 192.168.13.7"""
 
 from __future__ import annotations
 
@@ -25,11 +25,24 @@ DEPLOY = REPO / 'deploy'
 PLAY_DIST = REPO / 'playground' / 'dist'
 MOCK_OUTPUT = REPO / 'apps' / 'backend-mock' / '.output'
 KB_API = REPO / 'apps' / 'kb-api'
+MODELS_DIR = KB_API / 'models'
+DOWNLOAD_MODEL_SCRIPT = KB_API / 'scripts' / 'download-bge-model.py'
 
 
 def run_local(command: list[str], cwd: Path | None = None, timeout: int = 1800) -> None:
     print(f'[local] {" ".join(command)}')
     subprocess.run(command, cwd=cwd or REPO, check=True, timeout=timeout, shell=False)
+
+
+def ensure_bge_model() -> None:
+    marker = MODELS_DIR / 'hub'
+    if marker.exists() and any(marker.rglob('config.json')):
+        print(f'[bge] model cache exists: {MODELS_DIR}')
+        return
+    print('[bge] downloading model (first run may take a few minutes)...')
+    run_local([sys.executable, str(DOWNLOAD_MODEL_SCRIPT)], timeout=3600)
+    if not any(MODELS_DIR.rglob('config.json')):
+        raise RuntimeError(f'BGE model missing under {MODELS_DIR}')
 
 
 def ensure_builds() -> None:
@@ -71,11 +84,13 @@ def build_tarball() -> bytes:
 
         add_tree(PLAY_DIST, 'deploy/playground-dist')
         add_tree(MOCK_OUTPUT, 'deploy/backend-mock-output')
-        add_tree(KB_API / 'sql', 'apps/kb-api/sql')
-        add_tree(KB_API / 'src', 'apps/kb-api/src')
+        for folder in ('sql', 'src', 'scripts', 'seed-data', 'models'):
+            add_tree(KB_API / folder, f'apps/kb-api/{folder}')
         for name in (
             'Dockerfile.standalone',
+            'Dockerfile.bge-embedding',
             'package.standalone.json',
+            'requirements-bge.txt',
             'tsconfig.json',
             'docker-compose.prod.yml',
         ):
@@ -118,16 +133,18 @@ def run_remote(ssh: paramiko.SSHClient, command: str, timeout: int = 1800) -> st
     return out
 
 
-def docker_compose(ssh: paramiko.SSHClient, args: str) -> None:
+def docker_compose(ssh: paramiko.SSHClient, args: str, timeout: int = 2400) -> None:
     cmd = (
         f'cd {REMOTE_ROOT}/deploy && '
         f'(docker compose -f docker-compose.full.yml {args} '
         f'|| echo "{PASSWORD}" | sudo -S docker compose -f docker-compose.full.yml {args})'
     )
-    run_remote(ssh, cmd, timeout=2400)
+    run_remote(ssh, cmd, timeout=timeout)
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding='utf-8')
+    ensure_bge_model()
     ensure_builds()
     payload = build_tarball()
     print(f'[deploy] tarball {len(payload) / 1024 / 1024:.2f} MB → {USER}@{HOST}')
@@ -148,22 +165,31 @@ def main() -> None:
         )
         run_remote(
             ssh,
-            f'cd {REMOTE_ROOT}/apps/kb-api 2>/dev/null && '
-            f'(docker compose -f docker-compose.prod.yml down '
-            f'|| echo "{PASSWORD}" | sudo -S docker compose -f docker-compose.prod.yml down) '
-            '|| true',
+            'rm -f /home/user/kb-admin/apps/kb-api/sql/008_robot_doc.sql '
+            '/home/user/kb-admin/apps/kb-api/sql/009_seed_robot_doc.sql',
         )
-        docker_compose(ssh, 'down --remove-orphans || true')
-        cleanup = (
-            'for c in kb-mock-prod kb-admin-nginx kb-postgres-prod kb-api-prod; do '
-            f'(docker rm -f "$c" 2>/dev/null || echo "{PASSWORD}" | sudo -S docker rm -f "$c" 2>/dev/null) || true; '
-            'done'
-        )
-        run_remote(ssh, cleanup)
-        docker_compose(ssh, 'up -d --build')
-        time.sleep(12)
+        run_remote(ssh, 'docker rm -f kb-embedding-prod 2>/dev/null || true')
+        docker_compose(ssh, 'up -d --build --remove-orphans', timeout=3600)
+        time.sleep(20)
         run_remote(ssh, f'curl -sf http://127.0.0.1:{KB_API_PORT}/health || true')
+        run_remote(
+            ssh,
+            'docker exec kb-api-prod pnpm exec tsx scripts/seed-robot-docs.ts '
+            '2>/dev/null || echo seed-robot-docs skipped',
+            timeout=300,
+        )
+        run_remote(
+            ssh,
+            (
+                f'curl -sf -X POST http://127.0.0.1:{KB_API_PORT}/api/robot/knowledge/query '
+                f'-H "Content-Type: application/json" '
+                f'-H "X-Robot-Api-Key: abba8fd282de1bd03366be58664a033a" '
+                f'-d \'{{"utterance":"卫生间在哪里"}}\' || echo ROBOT_FAIL'
+            ),
+            timeout=60,
+        )
         run_remote(ssh, f'curl -sf -o /dev/null -w "%{{http_code}}" http://127.0.0.1:{ADMIN_PORT}/ || true')
+        docker_compose(ssh, 'ps -a')
         print('')
         print('========== 全栈部署完成 ==========')
         print(f'管理端： http://{HOST}:{ADMIN_PORT}/')

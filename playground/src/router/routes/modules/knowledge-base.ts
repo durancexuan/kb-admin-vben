@@ -32,6 +32,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    name: 'KnowledgeRobotDoc',
+    path: '/knowledge/robot-doc',
+    component: () => import('#/views/knowledge-base/robot-doc/index.vue'),
+    meta: {
+      icon: 'mdi:robot-outline',
+      order: 4,
+      title: '机器人专属知识库',
+    },
+  },
+  {
     name: 'Profile',
     path: '/profile',
     component: () => import('#/views/_core/profile/index.vue'),

@@ -6,9 +6,10 @@ export type EmbeddingHealth = {
   dim: number;
   error?: string;
   format: EmbeddingApiFormat;
-  mode: 'external' | 'local';
+  mode: 'local' | 'semantic';
   model: string;
   ok: boolean;
+  provider?: string;
   url?: string;
 };
 
@@ -174,6 +175,7 @@ export async function checkEmbeddingApi(
       mode: 'local',
       model: config.EMBEDDING_MODEL,
       ok: true,
+      provider: 'local-hash',
     };
   }
 
@@ -182,9 +184,10 @@ export async function checkEmbeddingApi(
     return {
       dim: vector.length,
       format: config.EMBEDDING_API_FORMAT,
-      mode: 'external',
+      mode: 'semantic',
       model: config.EMBEDDING_API_MODEL,
       ok: true,
+      provider: 'sentence-transformers',
       url: config.EMBEDDING_API_URL,
     };
   } catch (error) {
@@ -192,9 +195,10 @@ export async function checkEmbeddingApi(
       dim: config.EMBEDDING_DIM,
       error: error instanceof Error ? error.message : String(error),
       format: config.EMBEDDING_API_FORMAT,
-      mode: 'external',
+      mode: 'semantic',
       model: config.EMBEDDING_API_MODEL,
       ok: false,
+      provider: 'sentence-transformers',
       url: config.EMBEDDING_API_URL,
     };
   }

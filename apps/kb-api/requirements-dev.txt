@@ -1,0 +1,3 @@
+# kb-api scripts: deploy + local BGE server
+-r requirements-bge.txt
+paramiko>=3.0.0

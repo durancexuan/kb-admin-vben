@@ -112,15 +112,6 @@ export function useColumns(
       title: '商品名称',
     },
     {
-      field: 'semanticTags',
-      formatter: ({ cellValue }) => {
-        const tags = cellValue as string[] | undefined;
-        return tags?.length ? tags.join('、') : '-';
-      },
-      minWidth: 180,
-      title: '分类标签',
-    },
-    {
       field: 'price',
       formatter: ({ cellValue }) => {
         const price = Number(cellValue);

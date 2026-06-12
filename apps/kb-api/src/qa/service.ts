@@ -6,6 +6,10 @@ import {
   embeddingService,
   upsertQaEmbedding,
 } from '../embedding/embedding.service.js';
+import {
+  removeFromUnifiedIndex,
+  syncQaToUnifiedIndex,
+} from '../unified-index/sync.js';
 import { formatPublishError, validateQaPublish } from './publish.js';
 import {
   countEmbeddings,
@@ -52,6 +56,7 @@ export class QaService {
     }
 
     await deleteQaEmbedding(id);
+    await removeFromUnifiedIndex('qa', id, this.stationId);
     const updated = await setQaStatus(id, 'offline', 'none', this.stationId);
     return updated ? toQaRecord(updated) : null;
   }
@@ -229,6 +234,7 @@ export class QaService {
         question: row.question,
         stationId: row.station_id,
       });
+      await syncQaToUnifiedIndex(row, row.station_id);
       await setEmbedStatus(row.id, 'ok', this.stationId);
     } catch (error) {
       console.error('[qa] embedding failed', row.id, error);

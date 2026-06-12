@@ -1,5 +1,9 @@
 import { config } from '../config.js';
 import {
+  removeFromUnifiedIndex,
+  syncCampaignToUnifiedIndex,
+} from '../unified-index/sync.js';
+import {
   buildCampaignRecentSpeakReply,
   formatPublishError,
   validateCampaignPublish,
@@ -75,6 +79,7 @@ export class CampaignService {
     if (!row) {
       return null;
     }
+    await removeFromUnifiedIndex('campaign', id, this.stationId);
     const updated = await setCampaignStatus(id, 'offline', this.stationId);
     return this.toRecord(updated);
   }
@@ -102,6 +107,8 @@ export class CampaignService {
     if (!updated) {
       return { error: '活动不存在', success: false as const };
     }
+    const applicableGoods = await resolveGoodsNames(applicableGoodsIds);
+    await syncCampaignToUnifiedIndex(updated, applicableGoods, this.stationId);
     const data = await this.toRecord(updated);
     if (!data) {
       return { error: '活动不存在', success: false as const };

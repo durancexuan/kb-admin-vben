@@ -25,7 +25,9 @@
     // CSS 变量提示
     "vunguyentuan.vscode-css-variables",
     // 在 package.json 中显示 PNPM catalog 的版本
-    "antfu.pnpm-catalog-lens"
+    "antfu.pnpm-catalog-lens",
+    // kb-api 部署脚本与 BGE 本地服务
+    "ms-python.python"
   ],
   "unwantedRecommendations": [
     // 和 volar 冲突

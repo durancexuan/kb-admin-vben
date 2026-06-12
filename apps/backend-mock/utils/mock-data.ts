@@ -99,6 +99,16 @@ const knowledgeMenus = [
       title: '营销活动库',
     },
   },
+  {
+    name: 'KnowledgeRobotDoc',
+    path: '/knowledge/robot-doc',
+    component: '/knowledge-base/robot-doc/index',
+    meta: {
+      icon: 'mdi:robot-outline',
+      order: 4,
+      title: '机器人专属知识库',
+    },
+  },
 ];
 
 const kbMenus = [overviewMenu, ...knowledgeMenus];

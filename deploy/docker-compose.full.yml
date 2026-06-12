@@ -26,6 +26,31 @@ services:
       retries: 20
       start_period: 60s
 
+  bge-embedding:
+    build:
+      context: ../apps/kb-api
+      dockerfile: Dockerfile.bge-embedding
+    container_name: kb-bge-embedding
+    restart: unless-stopped
+    environment:
+      BGE_MODEL: BAAI/bge-small-zh-v1.5
+      HF_HOME: /models
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      PORT: 8090
+    expose:
+      - '8090'
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health')
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
+
   kb-api:
     build:
       context: ../apps/kb-api

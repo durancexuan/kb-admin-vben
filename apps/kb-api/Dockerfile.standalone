@@ -11,6 +11,8 @@ WORKDIR /app
 COPY package.standalone.json package.json
 COPY tsconfig.json ./
 COPY sql ./sql
+COPY seed-data ./seed-data
+COPY scripts ./scripts
 COPY src ./src
 
 RUN pnpm config set strict-dep-builds false && pnpm install

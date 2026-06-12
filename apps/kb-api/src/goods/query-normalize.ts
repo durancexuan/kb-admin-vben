@@ -66,9 +66,16 @@ export function normalizeGoodsUtterance(utterance: string) {
   return text || utterance.trim();
 }
 
+const KNOWLEDGE_BLOCK_FUEL_CATEGORY =
+  /地址|在哪里|在哪儿|电话|经理|是谁|适用|什么车|介绍|营业|成立|标号|油品|汽油|柴油|充电|发票|积分|便利店|品质|特色|位置/u;
+
 export function resolveCategoryAliases(text: string) {
   const trimmed = text.trim();
   if (!trimmed) {
+    return undefined;
+  }
+
+  if (KNOWLEDGE_BLOCK_FUEL_CATEGORY.test(trimmed)) {
     return undefined;
   }
 

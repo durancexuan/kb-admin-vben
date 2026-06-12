@@ -6,6 +6,11 @@ import {
   embeddingService,
   upsertGoodsEmbedding,
 } from '../embedding/embedding.service.js';
+import { shouldSuppressGoodsRetrieval } from '../robot/query-intent.js';
+import {
+  removeFromUnifiedIndex,
+  syncGoodsToUnifiedIndex,
+} from '../unified-index/sync.js';
 import {
   buildGoodsCatalogSpeakReply,
   formatPublishError,
@@ -77,6 +82,7 @@ export class GoodsService {
       return null;
     }
     await deleteGoodsEmbedding(id);
+    await removeFromUnifiedIndex('goods', id, this.stationId);
     const updated = await setGoodsStatus(id, 'offline', 'none', this.stationId);
     return updated ? toGoodsRecord(updated) : null;
   }
@@ -122,6 +128,10 @@ export class GoodsService {
 
     if (isGoodsCatalogInquiryIntent(raw)) {
       return this.retrieveGoodsCatalogInquiry();
+    }
+
+    if (shouldSuppressGoodsRetrieval(raw)) {
+      return { hit: false as const, items: [] };
     }
 
     const normalized = normalizeGoodsUtterance(raw);
@@ -327,6 +337,7 @@ export class GoodsService {
   private async syncEmbedding(row: GoodsRow) {
     try {
       await upsertGoodsEmbedding(row);
+      await syncGoodsToUnifiedIndex(row, row.station_id);
       await setGoodsEmbedStatus(row.id, 'ok', this.stationId);
     } catch {
       await setGoodsEmbedStatus(row.id, 'failed', this.stationId);

@@ -19,14 +19,15 @@ const envSchema = z.object({
   DEFAULT_STATION_ID: z.string().default('default'),
   EMBEDDING_API_FORMAT: z
     .enum(['openai', 'ollama', 'simple', 'tei'])
-    .default('openai'),
+    .default('simple'),
   EMBEDDING_API_KEY: z.string().optional(),
-  EMBEDDING_API_MODEL: z.string().default('bge-small-zh-v1.5'),
-  EMBEDDING_API_TIMEOUT_MS: z.coerce.number().default(30_000),
+  EMBEDDING_API_MODEL: z.string().default('BAAI/bge-small-zh-v1.5'),
+  EMBEDDING_API_TIMEOUT_MS: z.coerce.number().default(60_000),
   EMBEDDING_API_URL: z.string().optional(),
-  EMBEDDING_DIM: z.coerce.number().default(384),
+  EMBEDDING_DIM: z.coerce.number().default(512),
   EMBEDDING_MODEL: z.string().default('local-hash-v1'),
   MIN_RETRIEVE_SCORE: z.coerce.number().default(0.35),
+  ROBOT_RESULT_TOP_K: z.coerce.number().default(5),
   PORT: z.coerce.number().default(8080),
   ROBOT_API_KEY: z.string().default('robot-dev-key'),
 });

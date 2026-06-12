@@ -11,6 +11,8 @@ const ignores: OxlintConfig = {
     '**/*.svg',
     '**/*.yaml',
     '**/*.yml',
+    '**/apps/kb-api/models/**',
+    '**/apps/kb-api/.venv/**',
   ],
 };
 

@@ -154,6 +154,17 @@ curl.exe -s -X POST "http://127.0.0.1:8080/api/robot/knowledge/query" -H "Conten
 curl.exe -s -X POST "http://192.168.13.7:8089/api/robot/knowledge/query" -H "Content-Type: application/json" -H "X-Robot-Api-Key: abba8fd282de1bd03366be58664a033a" -d '{\"utterance\":\"卫生间在哪里\"}'
 ```
 
+启用BGE Embedding模型：
+
+```http
+# 终端 1：BGE（模型在 apps/kb-api/models/，已下载过则无需联网）
+python apps/kb-api/scripts/bge-embedding-server.py
+
+# 终端 2：kb-api
+pnpm -F @vben/kb-api run db:up
+pnpm dev:kb-api
+```
+
 完整 URL 示例：`POST http://127.0.0.1:8080/api/robot/knowledge/query`
 
 并行检索问答、商品、活动三库，只返回置信度最高的一条。看 **`data.hit`**、**`data.speak`**；向量检索时另有 **`data.vectorConfidence`**（语义相似度）与 **`data.matchType`**。对接文档：**[`apps/kb-api/ROBOT_API.zh-CN.md`](./apps/kb-api/ROBOT_API.zh-CN.md)**。

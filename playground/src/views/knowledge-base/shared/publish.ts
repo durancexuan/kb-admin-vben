@@ -1,6 +1,7 @@
 import type { KnowledgeCampaignApi } from '#/api/knowledge/campaign';
 import type { KnowledgeGoodsApi } from '#/api/knowledge/goods';
 import type { KnowledgeQaApi } from '#/api/knowledge/qa';
+import type { KnowledgeRobotDocApi } from '#/api/knowledge/robot-doc';
 
 import { Modal } from 'antdv-next';
 
@@ -40,6 +41,29 @@ export function getQaPublishIssues(row: KnowledgeQaApi.Qa): string[] {
     issues.push('答案');
   } else if (answer.length > 1000) {
     issues.push('答案（不超过 1000 字）');
+  }
+  if (!row.category) {
+    issues.push('分类');
+  }
+  return issues;
+}
+
+export function getRobotDocPublishIssues(
+  row: KnowledgeRobotDocApi.RobotDoc,
+): string[] {
+  const issues: string[] = [];
+  const title = row.title?.trim() ?? '';
+  const content = row.content?.trim() ?? '';
+
+  if (!title) {
+    issues.push('标题');
+  } else if (title.length > 200) {
+    issues.push('标题（不超过 200 字）');
+  }
+  if (!content) {
+    issues.push('正文');
+  } else if (content.length < 20) {
+    issues.push('正文（不少于 20 字）');
   }
   if (!row.category) {
     issues.push('分类');

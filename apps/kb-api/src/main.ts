@@ -10,7 +10,9 @@ import { registerGoodsRoutes } from './goods/routes.js';
 import { goodsService } from './goods/service.js';
 import { registerQaRoutes } from './qa/routes.js';
 import { qaService } from './qa/service.js';
+import { registerRobotDocRoutes } from './robot-doc/routes.js';
 import { registerRobotRoutes } from './robot/routes.js';
+import { reindexUnifiedLibrary } from './unified-index/reindex.js';
 
 async function bootstrap() {
   await migrate();
@@ -23,6 +25,7 @@ async function bootstrap() {
       await registerQaRoutes(instance);
       await registerGoodsRoutes(instance);
       await registerCampaignRoutes(instance);
+      await registerRobotDocRoutes(instance);
       await registerRobotRoutes(instance);
     },
     { prefix: '/api' },
@@ -48,12 +51,12 @@ async function bootstrap() {
           model: embeddingHealth.model,
           url: embeddingHealth.url,
         },
-        'external embedding api ready',
+        'semantic embedding (BGE) ready',
       );
     } else {
       app.log.error(
         { error: embeddingHealth.error, url: embeddingHealth.url },
-        'external embedding api unavailable; vectors will fail until fixed',
+        'semantic embedding unavailable; check bge-embedding service',
       );
     }
   } else {
@@ -64,6 +67,7 @@ async function bootstrap() {
   }
 
   await Promise.all([qaService.reindexOnline(), goodsService.reindexOnline()]);
+  await reindexUnifiedLibrary();
 
   await app.listen({ host: '0.0.0.0', port: config.PORT });
   app.log.info(`kb-api listening on http://127.0.0.1:${config.PORT}/api`);

@@ -239,5 +239,12 @@
   },
   "commentTranslate.hover.enabled": false,
   "commentTranslate.multiLineMerge": true,
-  "vue.server.hybridMode": true
+  "vue.server.hybridMode": true,
+
+  // kb-api Python 脚本（paramiko / flask / sentence-transformers）
+  "python.defaultInterpreterPath": "${workspaceFolder}/apps/kb-api/.venv/Scripts/python.exe",
+  "python.analysis.extraPaths": ["${workspaceFolder}/apps/kb-api"],
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python"
+  }
 }
